@@ -1,0 +1,7 @@
+# 统一文本文件行尾为 LF，避免 Windows runner 上 CRLF 破坏脚本与清单
+*.list text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
