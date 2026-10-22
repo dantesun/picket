@@ -4,7 +4,7 @@
 # Usage: prepare.sh <vscode-version> <picket-version> <linux|darwin|win32> [x64|arm64]
 #
 # Follows the VSCodium pattern: clone microsoft/vscode, lay down our
-# product.json, build with gulp, then package platform artifacts.
+# product.json, build with npm/gulp, then package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -33,10 +33,9 @@ git clone --depth 1 --branch "$VSCODE_VERSION" \
 echo "==> [picket] Applying product.json (rename, telemetry off, Open VSX gallery)"
 cp "$SCRIPT_DIR/product.json" "$ROOT_DIR/vscode/product.json"
 
-echo "==> [picket] Installing dependencies (yarn 1)"
+echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
 cd "$ROOT_DIR/vscode"
-npm install -g yarn@1.22.22
-yarn --ignore-optional
+npm ci --no-audit --no-fund
 
 case "$PLATFORM" in
   linux)  TARGET="vscode-linux-$ARCH-min"  ;;
@@ -46,7 +45,7 @@ esac
 
 echo "==> [picket] Building $TARGET"
 export NODE_OPTIONS="--max-old-space-size=8192"
-node node_modules/.bin/gulp "$TARGET"
+npm run gulp "$TARGET"
 
 echo "==> [picket] Packaging"
 cd "$ROOT_DIR/vscode"
