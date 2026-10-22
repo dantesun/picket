@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
-# Package stage for Windows (aligned with the VSCodium pipeline).
+# Windows package stage (aligned with the VSCodium pipeline).
 #
-# Usage: package.sh <vscode-version> <picket-version> <win32> [x64|arm64]
+# Usage: package.sh <win32> [x64|arm64]
 #
-# Expects vscode.tar.gz (produced by the compile job) in the repo root.
-# Renames the prebuilt VSCode-win32-<arch> folder to picket-win32-<arch>
-# and creates a zip. Windows rename is hardened: kill processes locking
-# the tree, clear read-only attributes, retry, robocopy /MOVE fallback.
+# Expects vscode.tar.gz (produced by the compile job) under the repo root.
+# Extracts it, renames the prebuilt VSCode-win32-<arch> folder to
+# picket-win32-<arch> and creates a zip. No compilation happens in this job,
+# so a packaging failure never re-runs the ~4 min compile.
+#
+# Windows rename is hardened: kill processes locking the tree, clear
+# read-only attributes, retry the move, robocopy /MOVE fallback. The zip is
+# created with 7z when available, else the Windows bsdtar (tar.exe), else
+# PowerShell Compress-Archive (slow path).
 set -euo pipefail
 
-VSCODE_VERSION="$1"
-PICKET_VERSION="$2"
-PLATFORM="${3:-win32}"
-ARCH="${4:-x64}"
+PLATFORM="${1:-win32}"
+ARCH="${2:-x64}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -27,8 +30,13 @@ case "$ARCH" in
   *) echo "Unknown arch: $ARCH (expected x64|arm64)" >&2; exit 1 ;;
 esac
 
-echo "==> [picket] Extracting compile artifact (vscode.tar.gz)"
-tar -xzf "$ROOT_DIR/vscode.tar.gz"
+echo "==> [picket] Locating compile artifact"
+TARBALL="$(find "$ROOT_DIR" -maxdepth 2 -name 'vscode.tar.gz' | head -1)"
+if [ -z "$TARBALL" ]; then
+  echo "vscode.tar.gz not found" >&2
+  exit 1
+fi
+tar -xzf "$TARBALL" -C "$ROOT_DIR"
 
 SRC_DIR="$ROOT_DIR/VSCode-win32-$ARCH"
 if [ ! -d "$SRC_DIR" ]; then
@@ -36,9 +44,9 @@ if [ ! -d "$SRC_DIR" ]; then
   exit 1
 fi
 
-OUT_DIR="picket-win32-$ARCH"
-echo "==> [picket] Packaging (win32-$ARCH) -> $OUT_DIR"
+echo "==> [picket] Renaming VSCode-win32-$ARCH -> picket-win32-$ARCH"
 cd "$ROOT_DIR"
+OUT_DIR="picket-win32-$ARCH"
 rm -rf "$OUT_DIR"
 
 # Windows 下 mv 报 Permission denied 的常见根因：文件被残留进程占用、
@@ -75,4 +83,5 @@ else
   powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR' -DestinationPath '$ROOT_DIR/picket-win32-$ARCH.zip'"
 fi
 
-echo "==> [picket] Done. Picket v$PICKET_VERSION (win32-$ARCH) from VS Code $VSCODE_VERSION"
+echo "==> [picket] Windows package done"
+ls -lh "$ROOT_DIR/picket-win32-$ARCH.zip"
