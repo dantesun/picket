@@ -64,7 +64,9 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxkbfile-dev libsecret-1-dev libnss3 libgtk-3-0
+          sudo apt-get install -y \
+            libxkbfile-dev libsecret-1-dev libkrb5-dev \
+            libnss3 libxss1 libatk-bridge2.0-0 libgtk-3-0
 
       - name: Prepare, build and package
         shell: bash
