@@ -5,8 +5,8 @@
 #
 # Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
 # (merge, not overwrite — upstream fields like builtInExtensions must stay),
-# trim built-in extensions to the minimal set, build with npm/gulp, then
-# package platform artifacts.
+# trim built-in extensions to the minimal set, patch out upstream Copilot
+# build hooks, build with npm/gulp, then package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -57,6 +57,24 @@ while IFS= read -r ext; do
   fi
 done < "$SCRIPT_DIR/extensions-remove.list"
 echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
+
+echo "==> [picket] Patching out upstream Copilot build hooks (1.142 hardcodes Copilot)"
+python3 - <<'PYEOF'
+# Upstream 1.142 hard-codes the built-in Copilot extension into the min
+# packaging chain: prepareBuiltInCopilotRipgrepShim throws when
+# extensions/copilot/node_modules/@github/copilot/sdk is missing. Since
+# Picket removes Copilot entirely, make the guard a no-op.
+path = 'build/lib/copilot.ts'
+with open(path, encoding='utf-8') as f:
+    src = f.read()
+old = 'throw new Error(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}`);'
+new = 'console.warn(`[picket] Copilot extension removed; skipping ripgrep shim: ${copilotSdkBase}`);\n\t\treturn;'
+assert old in src, 'copilot.ts: prepareBuiltInCopilotRipgrepShim throw not found'
+src = src.replace(old, new, 1)
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(src)
+print('patched build/lib/copilot.ts (throw -> warn+return)')
+PYEOF
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
 npm ci --no-audit --no-fund
