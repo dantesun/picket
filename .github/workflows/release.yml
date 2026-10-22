@@ -25,12 +25,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # MVP scope: Linux + Windows (x64). macOS planned after P0 validation.
           - platform: linux
             arch: x64
             runner: ubuntu-latest
-          - platform: darwin
-            arch: x64
-            runner: macos-latest
           - platform: win32
             arch: x64
             runner: windows-latest
