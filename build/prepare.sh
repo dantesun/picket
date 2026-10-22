@@ -81,7 +81,30 @@ case "$PLATFORM" in
   win32)
     OUT_DIR="picket-win32-$ARCH"
     rm -rf "$OUT_DIR"
-    mv "VSCode-win32-$ARCH" "$OUT_DIR"
+    # Windows 下 mv 报 Permission denied 的常见根因：文件被残留进程占用、
+    # 只读属性、或 Defender 实时扫描的瞬时文件锁。先处理前两类，再带重试
+    # 移动，最后用 robocopy /MOVE 兜底。
+    powershell -NoProfile -Command \
+      "Get-Process | Where-Object { \$_.Path -like '*VSCode-win32-$ARCH*' } | Stop-Process -Force -ErrorAction SilentlyContinue" || true
+    powershell -NoProfile -Command "attrib -R 'VSCode-win32-$ARCH\*.*' /S /D" || true
+    MOVED=0
+    for i in 1 2 3 4 5; do
+      if mv "VSCode-win32-$ARCH" "$OUT_DIR" 2>/dev/null; then
+        MOVED=1
+        break
+      fi
+      echo "move retry $i/5 (Windows rename failure is usually transient)..." >&2
+      sleep 3
+    done
+    if [ "$MOVED" -ne 1 ]; then
+      echo "mv retries exhausted; trying robocopy /MOVE fallback..." >&2
+      robocopy "VSCode-win32-$ARCH" "$OUT_DIR" /E /MOVE /R:3 /W:2 >/dev/null || true
+      [ -d "$OUT_DIR" ] && MOVED=1
+    fi
+    if [ "$MOVED" -ne 1 ]; then
+      echo "failed to move VSCode-win32-$ARCH to $OUT_DIR" >&2
+      exit 1
+    fi
     if command -v powershell >/dev/null 2>&1; then
       powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR' -DestinationPath '$ROOT_DIR/picket-win32-$ARCH.zip'"
     else
