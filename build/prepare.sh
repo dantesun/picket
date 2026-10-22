@@ -36,6 +36,7 @@ cd "$ROOT_DIR/vscode"
 REMOVE_COUNT=0
 while IFS= read -r ext; do
   [ -z "$ext" ] && continue
+  ext="${ext%$'\r'}"
   if [ -d "extensions/$ext" ]; then
     rm -rf "extensions/$ext"
     REMOVE_COUNT=$((REMOVE_COUNT + 1))
