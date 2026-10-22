@@ -10,6 +10,8 @@ Patches:
   3. npm/dirs.ts    - skip removed extension dirs in postinstall
   4. gulpfile.extensions.ts - compile only existing extension tsconfigs
   5. lib/extensions.ts     - build media only for existing extension scripts
+  6. gulpfile.vscode.ts    - skip AppX/context-menu packaging when win32ContextMenu is absent
+  7. gulpfile.vscode.ts    - tolerate missing signtool.exe (no Authenticode to strip)
 """
 import json
 import sys
@@ -75,7 +77,25 @@ def main() -> None:
         'esbuildMediaScripts filter non-existent scripts',
     )
 
+
+    # 6. gulpfile.vscode.ts: skip AppX/context-menu packaging (no win32ContextMenu in picket product.json)
+    patch_file(
+        'build/gulpfile.vscode.ts',
+        "if (quality === 'stable' || quality === 'insider') {",
+        "if (product.win32ContextMenu && (quality === 'stable' || quality === 'insider')) {",
+        'skip appx when win32ContextMenu absent',
+    )
+
+    # 7. gulpfile.vscode.ts: treat missing signtool as unsigned, keep rcedit working
+    patch_file(
+        'build/gulpfile.vscode.ts',
+        "const proc = cp.spawn('signtool.exe', ['verify', '/pa', filePath]);\n\t\tproc.on('error', reject);",
+        "const proc = cp.spawn('signtool.exe', ['verify', '/pa', filePath]);\n\t\tproc.on('error', () => resolve(false));",
+        'signtool missing -> resolve(false)',
+    )
+
     print('All picket patches applied.')
+
 
 
 if __name__ == '__main__':
