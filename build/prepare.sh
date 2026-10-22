@@ -6,7 +6,7 @@
 # Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
 # (merge, not overwrite — upstream fields like builtInExtensions must stay),
 # trim built-in extensions to the minimal set, patch out upstream Copilot
-# build hooks and the hardcoded extension-dir list, build with npm/gulp,
+# build hooks and hardcoded extension lists, build with npm/gulp,
 # then package platform artifacts.
 set -euo pipefail
 
@@ -96,6 +96,23 @@ src = src.replace(old_arr, new_arr, 1)
 with open(path, 'w', encoding='utf-8') as f:
     f.write(src)
 print('patched build/npm/dirs.ts (filter non-existent dirs)')
+PYEOF
+
+echo "==> [picket] Patching build/gulpfile.extensions.ts (filter removed tsconfigs)"
+python3 - <<'PYEOF'
+# gulpfile.extensions.ts hardcodes the list of extension tsconfig.json files
+# to compile. createExtensionTasks() fails when a tsconfig points at a
+# removed extension dir, so filter the list to existing files.
+path = 'build/gulpfile.extensions.ts'
+with open(path, encoding='utf-8') as f:
+    src = f.read()
+old = "'.vscode/extensions/vscode-pr-pinger/tsconfig.json',\n];"
+new = "'.vscode/extensions/vscode-pr-pinger/tsconfig.json',\n].filter(f => fs.existsSync(path.join(root, f)));"
+assert old in src, 'gulpfile.extensions.ts compilations end not found'
+src = src.replace(old, new, 1)
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(src)
+print('patched build/gulpfile.extensions.ts (filter non-existent tsconfigs)')
 PYEOF
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
