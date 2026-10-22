@@ -19,23 +19,15 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: "Build ${{ matrix.platform }}-${{ matrix.arch }}"
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # MVP scope: Linux + Windows (x64). macOS planned after P0 validation.
-          - platform: linux
-            arch: x64
-            runner: ubuntu-latest
-          - platform: win32
-            arch: x64
-            runner: windows-latest
-    runs-on: ${{ matrix.runner }}
+  # Version resolution first: vscode tag, upstream node version, picket version.
+  versions:
+    name: Resolve versions
+    runs-on: ubuntu-latest
+    outputs:
+      vscode: ${{ steps.versions.outputs.vscode }}
+      node: ${{ steps.versions.outputs.node }}
+      picket: ${{ steps.versions.outputs.picket }}
     steps:
-      - uses: actions/checkout@v7
-
       - name: Resolve versions (vscode tag, node from upstream .nvmrc)
         id: versions
         shell: bash
@@ -55,9 +47,32 @@ jobs:
             echo "picket=0.0.0-dev" >> "$GITHUB_OUTPUT"
           fi
 
+  # Compile stage: clone + patch + npm ci + shared prepack, then ship the
+  # vscode/ tree as a tarball. Mirrors VSCodium's compile job.
+  compile:
+    name: "Compile ${{ matrix.platform }}-${{ matrix.arch }}"
+    needs: versions
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - platform: win32
+            arch: x64
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ steps.versions.outputs.node }}
+          node-version: ${{ needs.versions.outputs.node }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
 
       - name: Install Linux build dependencies
         if: matrix.platform == 'linux'
@@ -68,25 +83,74 @@ jobs:
             libxkbfile-dev libsecret-1-dev libkrb5-dev \
             libnss3 libxss1 libatk-bridge2.0-0 libgtk-3-0
 
-      - name: Prepare, build and package
+      - name: Compile
         shell: bash
         run: |
-          bash build/prepare.sh "${{ steps.versions.outputs.vscode }}" \
-            "${{ steps.versions.outputs.picket }}" \
+          bash build/build.sh "${{ needs.versions.outputs.vscode }}" \
+            "${{ needs.versions.outputs.picket }}" \
             "${{ matrix.platform }}" "${{ matrix.arch }}"
 
-      - name: Upload artifacts
+      - name: Upload vscode artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: vscode-${{ matrix.platform }}
+          path: vscode.tar.gz
+          retention-days: 30
+
+  # Package stage: per-platform, consumes the compile artifact and runs the
+  # upstream -min-packing gulp task. Mirrors VSCodium's package jobs.
+  package:
+    name: "Package ${{ matrix.platform }}-${{ matrix.arch }}"
+    needs: [versions, compile]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - platform: win32
+            arch: x64
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ needs.versions.outputs.node }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbfile-dev libsecret-1-dev libkrb5-dev \
+            libnss3 libxss1 libatk-bridge2.0-0 libgtk-3-0
+
+      - name: Download vscode artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: vscode-${{ matrix.platform }}
+
+      - name: Package
+        shell: bash
+        run: |
+          bash build/${{ matrix.platform }}/package.sh "${{ matrix.platform }}" "${{ matrix.arch }}"
+
+      - name: Upload picket artifacts
         uses: actions/upload-artifact@v7
         with:
           name: picket-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            picket-*.tar.gz
-            picket-*.zip
+            picket-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+            picket-${{ matrix.platform }}-${{ matrix.arch }}.zip
           if-no-files-found: error
 
   release:
     name: Publish GitHub Release
-    needs: build
+    needs: package
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
