@@ -60,7 +60,8 @@ export NODE_OPTIONS="--max-old-space-size=8192"
 npm run gulp "$TARGET"
 
 echo "==> [picket] Packaging"
-cd "$ROOT_DIR/vscode"
+# gulp 输出目录在 vscode 仓库的上级（gulpfile.vscode.ts: destination = dirname(root)/VSCode-<plat>-<arch>）
+cd "$ROOT_DIR"
 case "$PLATFORM" in
   linux)
     OUT_DIR="picket-linux-$ARCH"
