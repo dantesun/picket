@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# Compile stage of the Picket build (mirrors VSCodium build.sh in CI mode).
+# Compile stage of the Picket build (aligned with the VSCodium pipeline).
 #
 # Usage: build.sh <vscode-version> <picket-version> <linux|win32> [x64|arm64]
 #
-# Stages: clone microsoft/vscode at the pinned tag, trim built-in extensions,
-# apply Picket patches (product.json merge + Copilot removal), npm ci (retry),
-# then run the shared upstream `vscode-min-prepack` gulp task. The vscode/ tree
-# is compressed into vscode.tar.gz (excluding node_modules/.build/node/.git)
-# and consumed by the per-platform package job, exactly like VSCodium's CI.
+# This stage clones microsoft/vscode at the pinned tag, trims built-in
+# extensions, applies Picket patches (product.json merge + Copilot removal),
+# runs npm ci (with retry) and the upstream min build for this platform:
+# `vscode-<platform>-<arch>-min`. Note: the old VSCodium task names
+# (`vscode-min-prepack`, `vscode-<plat>-<arch>-min-packing`) no longer exist
+# in the modern upstream gulpfile; `-min` produces the full product folder
+# (VSCode-<platform>-<arch>) in the workspace root.
+#
+# The vscode/ tree AND the built VSCode-<platform>-<arch> folder are
+# compressed into vscode.tar.gz and consumed by the per-platform package
+# job, exactly like VSCodium's CI split. No packaging happens here, so a
+# packaging failure never re-runs the ~4 min compile.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -47,34 +54,39 @@ done < "$SCRIPT_DIR/extensions-remove.list"
 echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
 
 echo "==> [picket] Applying Picket patches (product.json, Copilot, extension lists)"
-python3 "$SCRIPT_DIR/patch-vscode.py"
+PYTHON_BIN="$(command -v python3 || command -v python)"
+"$PYTHON_BIN" "$SCRIPT_DIR/patch-vscode.py"
 
-echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
+echo "==> [picket] Installing dependencies (npm ci; retry up to 5 times)"
 for i in 1 2 3 4 5; do
-  npm ci --no-audit --no-fund && break
+  if npm ci --no-audit --no-fund; then
+    break
+  fi
   if [ "$i" -eq 5 ]; then
-    echo "npm ci failed too many times" >&2
+    echo "npm ci failed 5 times" >&2
     exit 1
   fi
-  echo "npm ci failed $i, retrying..."
+  echo "npm ci failed $i/5, retrying..." >&2
   sleep $(( 15 * (i + 1) ))
 done
 
-echo "==> [picket] Shared prepack (vscode-min-prepack)"
+echo "==> [picket] Building vscode-$PLATFORM-$ARCH-min"
 export NODE_OPTIONS="--max-old-space-size=8192"
-npm run gulp vscode-min-prepack
+export VSCODE_PUBLISH_COUNTER=1
+npm run gulp "vscode-$PLATFORM-$ARCH-min"
 
-echo "==> [picket] Compressing vscode/ for the package stage"
+if [ ! -d "$ROOT_DIR/VSCode-$PLATFORM-$ARCH" ]; then
+  echo "Build completed but output dir VSCode-$PLATFORM-$ARCH is missing" >&2
+  exit 1
+fi
+
+echo "==> [picket] Compressing vscode/ + VSCode-$PLATFORM-$ARCH for the package stage"
 cd "$ROOT_DIR"
-# Same exclusions as VSCodium's compile job: keep compiled sources, drop
-# node_modules / .build/node / .git (the package stage re-runs npm ci).
-find vscode -type f \
-  -not -path "*/node_modules/*" \
-  -not -path "vscode/.build/node/*" \
-  -not -path "vscode/.git/*" > vscode.txt
-echo "vscode/.build/extensions/node_modules" >> vscode.txt
-echo "vscode/.git" >> vscode.txt
-tar -czf "vscode.tar.gz" -T vscode.txt
+tar -czf vscode.tar.gz \
+  --exclude='vscode/node_modules' \
+  --exclude='vscode/.git' \
+  --exclude='vscode/.build/node' \
+  vscode "VSCode-$PLATFORM-$ARCH"
 
 echo "==> [picket] Compile stage done. Picket v$PICKET_VERSION ($PLATFORM-$ARCH) from VS Code $VSCODE_VERSION"
 ls -lh "$ROOT_DIR/vscode.tar.gz"
