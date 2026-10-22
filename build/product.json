@@ -1,4 +1,3 @@
-# Picket product.json — applied on top of upstream microsoft/vscode at build time.
 {
   "nameShort": "picket",
   "nameLong": "Picket",
