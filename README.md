@@ -1,54 +1,56 @@
 # Picket
 
-> A hardened VS Code distribution for AI coding agents — gated extensions, a private model gateway, and per-project sandboxes, out of the box.
+> 面向 AI 编码 agent 的加固版 VS Code 发行版——受控扩展、私有模型网关、按项目沙箱，开箱即用。
 
-Picket is a [Code - OSS](https://github.com/microsoft/vscode) fork distributed as a clean, telemetry-free binary. It is built for teams that run AI coding agents (Claude Code, OpenCode, [iCode](https://github.com/openJiuwen-ai/iCode)) inside trusted, per-project environments — the typical enterprise / 信创 intranet scenario.
+Picket 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork），以干净、无遥测的二进制分发。它面向在可信、按项目隔离的环境中运行 AI 编码 agent（Claude Code、OpenCode、[iCode](https://github.com/openJiuwen-ai/iCode)）的团队——典型场景是企业 / 信创内网。
 
-## Features
+## 特性
 
-- **Clean distribution** — MIT-licensed build of Code-OSS with Microsoft customizations removed (no telemetry, no Microsoft branding, no Microsoft marketplace).
-- **Gated extensions** — extensions come from Open VSX by default and can point at your own gallery; a whitelist policy can be layered on top.
-- **Private model gateway** — designed to pair with a self-hosted gateway (e.g. LiteLLM) so agents only talk to model endpoints you control.
-- **Per-project sandboxes** — devcontainer templates and egress firewall profiles keep an agent's terminal, builds and file operations inside the project.
-- **First-class iCode support** — preconfigured to run iCode as the built-in coding agent (BYO model, no telemetry, OTel-ready, Workflows & Skills supported).
+- **干净发行**——MIT 许可的 Code-OSS 构建，移除微软定制（无遥测、无微软品牌、无微软市场）。
+- **默认离线**——发行版不包含任何需要联网的扩展：无 Copilot、无 GitHub 云集成、无认证/隧道/浏览器扩展；核心编辑体验完全离线。
+- **受控扩展**——默认使用 Open VSX，可指向自建市场；可在其上叠加白名单策略。
+- **私有模型网关**——设计上配合自托管网关（如 LiteLLM），让 agent 只访问你控制的模型端点。
+- **按项目沙箱**——devcontainer 模板与出站防火墙配置，把 agent 的终端、构建与文件操作约束在项目内。
+- **iCode 一等公民支持**——预置 iCode 作为内置编码 agent（BYO 模型、无遥测、OTel 就绪、支持 Workflows 与 Skills）。
 
-## Platform support
+## 平台支持
 
-MVP scope (current releases): **Linux (x64)** and **Windows (x64)** — `tar.gz` and `zip` archives. macOS and ARM64 builds are planned after the P0 validation loop; see `docs/roadmap.md`.
+MVP 范围（当前发行）：**Linux (x64)** 与 **Windows (x64)**——`tar.gz` 与 `zip` 压缩包。macOS 与 ARM64 在 P0 验证闭环后规划；见 `docs/roadmap.md`。
 
-## Quick start
+## 快速开始
 
-Download the latest archive for your platform from [Releases](https://github.com/dantesun/picket/releases), unpack and run `picket` (Windows: `picket.exe`).
+从 [Releases](https://github.com/dantesun/picket/releases) 下载对应平台的压缩包，解压后运行 `picket`（Windows：`picket.exe`）。
 
-Press **F4** inside iCode on first launch to add a model profile.
+首次启动 iCode 时按 **F4** 添加模型配置。
 
-## Build from source
+## 从源码构建
 
 ```bash
 bash build/prepare.sh <vscode-version> <picket-version> <linux|darwin|win32> [x64|arm64]
 ```
 
-Example:
+示例：
 
 ```bash
 bash build/prepare.sh 1.99.1 0.1.0 linux x64
 ```
 
-The script clones `microsoft/vscode@<vscode-version>`, applies `build/product.json`, builds and packages the binary for the target platform.
+脚本会克隆 `microsoft/vscode@<vscode-version>`、合并打补丁 `build/product.json`（改名、关闭遥测、Open VSX 市场、更新通道指向本项目 Releases）、按最小集裁剪内置扩展、构建并打包目标平台二进制。
 
-## Release pipeline
+## 发行流水线
 
-Pushing a `v*` tag triggers the GitHub Actions release workflow (`.github/workflows/release.yml`):
+推送 `v*` 标签即触发 GitHub Actions 发行工作流（`.github/workflows/release.yml`）：
 
-1. Clone `microsoft/vscode` at the resolved upstream tag.
-2. Apply `build/product.json` — rename to Picket, telemetry off, Open VSX gallery, update channel to our releases.
-3. Build per-platform (linux / win32, x64 — MVP scope) and package (`tar.gz` / `zip`).
-4. Publish assets to the GitHub Release.
+1. 在解析出的上游标签处克隆 `microsoft/vscode`。
+2. 应用 `build/product.json`——改名为 Picket、关闭遥测、Open VSX 市场、更新通道指向本项目 Releases。
+3. 按最小集裁剪内置扩展（`build/extensions-remove.list`，默认离线）。
+4. 按平台构建（linux / win32，x64——MVP 范围）并打包（`tar.gz` / `zip`）。
+5. 将产物发布到 GitHub Release。
 
-Planned packaging upgrades: AppImage & deb, dmg, NSIS installer, code signing. See `docs/roadmap.md`.
+计划中的打包升级：AppImage 与 deb、dmg、NSIS 安装器、代码签名。见 `docs/roadmap.md`。
 
-## License
+## 许可
 
-MIT for this repository. The distributed binary is built from `microsoft/vscode` (MIT) and follows the same pattern as [VSCodium](https://vscodium.com).
+本仓库为 MIT 许可。发行的二进制由 `microsoft/vscode`（MIT）构建，与 [VSCodium](https://vscodium.com) 采用相同模式。
 
-> Picket is not affiliated with Microsoft. "Visual Studio Code" is a trademark of Microsoft. This project uses the open-source Code - OSS sources only.
+> Picket 与微软无关。“Visual Studio Code”是微软的商标。本项目仅使用开源的 Code - OSS 源码。
