@@ -47,8 +47,9 @@ jobs:
             echo "picket=0.0.0-dev" >> "$GITHUB_OUTPUT"
           fi
 
-  # Compile stage: clone + patch + npm ci + shared prepack, then ship the
-  # vscode/ tree as a tarball. Mirrors VSCodium's compile job.
+  # Compile stage: clone + patch + npm ci + upstream min build, then ship the
+  # vscode/ tree + built VSCode-<plat>-<arch> as vscode.tar.gz. Mirrors
+  # VSCodium's compile job; no packaging happens here.
   compile:
     name: "Compile ${{ matrix.platform }}-${{ matrix.arch }}"
     needs: versions
@@ -62,7 +63,7 @@ jobs:
             runner: ubuntu-latest
           - platform: win32
             arch: x64
-            runner: windows-latest
+            runner: windows-2022
     steps:
       - uses: actions/checkout@v7
 
@@ -97,8 +98,8 @@ jobs:
           path: vscode.tar.gz
           retention-days: 30
 
-  # Package stage: per-platform, consumes the compile artifact and runs the
-  # upstream -min-packing gulp task. Mirrors VSCodium's package jobs.
+  # Package stage: per-platform, consumes the compile artifact, renames to
+  # picket-*, archives, checksums. Mirrors VSCodium's package jobs.
   package:
     name: "Package ${{ matrix.platform }}-${{ matrix.arch }}"
     needs: [versions, compile]
@@ -112,40 +113,38 @@ jobs:
             runner: ubuntu-latest
           - platform: win32
             arch: x64
-            runner: windows-latest
+            runner: windows-2022
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ needs.versions.outputs.node }}
-
-      - name: Install Linux build dependencies
-        if: matrix.platform == 'linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libxkbfile-dev libsecret-1-dev libkrb5-dev \
-            libnss3 libxss1 libatk-bridge2.0-0 libgtk-3-0
 
       - name: Download vscode artifact
         uses: actions/download-artifact@v8
         with:
           name: vscode-${{ matrix.platform }}
 
+      - name: Move artifact to workspace root
+        shell: bash
+        run: |
+          mv "vscode-${{ matrix.platform }}/vscode.tar.gz" ./vscode.tar.gz
+
       - name: Package
         shell: bash
         run: |
           bash build/${{ matrix.platform }}/package.sh "${{ matrix.platform }}" "${{ matrix.arch }}"
+
+      - name: Checksums
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          sha256sum picket-${{ matrix.platform }}-${{ matrix.arch }}.* > SHA256SUMS
 
       - name: Upload picket artifacts
         uses: actions/upload-artifact@v7
         with:
           name: picket-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            picket-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
-            picket-${{ matrix.platform }}-${{ matrix.arch }}.zip
+            picket-${{ matrix.platform }}-${{ matrix.arch }}.*
+            SHA256SUMS
           if-no-files-found: error
 
   release:
