@@ -6,7 +6,8 @@
 # Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
 # (merge, not overwrite — upstream fields like builtInExtensions must stay),
 # trim built-in extensions to the minimal set, patch out upstream Copilot
-# build hooks, build with npm/gulp, then package platform artifacts.
+# build hooks and the hardcoded extension-dir list, build with npm/gulp,
+# then package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -74,6 +75,27 @@ src = src.replace(old, new, 1)
 with open(path, 'w', encoding='utf-8') as f:
     f.write(src)
 print('patched build/lib/copilot.ts (throw -> warn+return)')
+PYEOF
+
+echo "==> [picket] Patching build/npm/dirs.ts (skip removed extension dirs)"
+python3 - <<'PYEOF'
+# postinstall walks the hardcoded dirs list and runs npm ci in each.
+# Removed extension dirs would make spawn fail with ENOENT (invalid cwd),
+# so filter the list to directories that actually exist.
+path = 'build/npm/dirs.ts'
+with open(path, encoding='utf-8') as f:
+    src = f.read()
+old_import = "import { existsSync } from 'fs';"
+new_import = "import { existsSync } from 'fs';\nimport path from 'path';"
+assert old_import in src, 'dirs.ts import not found'
+src = src.replace(old_import, new_import, 1)
+old_arr = "'.vscode/extensions/vscode-pr-pinger',\n];"
+new_arr = "'.vscode/extensions/vscode-pr-pinger',\n].filter(dir => dir === '' || existsSync(path.join(import.meta.dirname, '../..', dir)));"
+assert old_arr in src, 'dirs.ts array end not found'
+src = src.replace(old_arr, new_arr, 1)
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(src)
+print('patched build/npm/dirs.ts (filter non-existent dirs)')
 PYEOF
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
