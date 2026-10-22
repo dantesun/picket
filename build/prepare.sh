@@ -65,7 +65,7 @@ case "$PLATFORM" in
   linux)
     OUT_DIR="picket-linux-$ARCH"
     rm -rf "$OUT_DIR"
-    mv "vscode-linux-$ARCH" "$OUT_DIR"
+    mv "VSCode-linux-$ARCH" "$OUT_DIR"
     tar czf "$ROOT_DIR/picket-linux-$ARCH.tar.gz" "$OUT_DIR"
     ;;
   darwin)
@@ -79,7 +79,7 @@ case "$PLATFORM" in
   win32)
     OUT_DIR="picket-win32-$ARCH"
     rm -rf "$OUT_DIR"
-    mv "vscode-win32-$ARCH" "$OUT_DIR"
+    mv "VSCode-win32-$ARCH" "$OUT_DIR"
     if command -v powershell >/dev/null 2>&1; then
       powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR' -DestinationPath '$ROOT_DIR/picket-win32-$ARCH.zip'"
     else
