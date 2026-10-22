@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       vscode_version:
-        description: "Upstream VS Code tag (e.g. 1.99.1). Defaults to latest stable."
+        description: "Upstream VS Code tag (e.g. 1.142.0). Defaults to latest stable."
         required: false
         type: string
       pre_release:
@@ -36,25 +36,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Resolve versions
+      - name: Resolve versions (vscode tag, node from upstream .nvmrc)
         id: versions
         shell: bash
         run: |
           if [ -n "${{ github.event.inputs.vscode_version }}" ]; then
-            echo "vscode=${{ github.event.inputs.vscode_version }}" >> "$GITHUB_OUTPUT"
+            VSCODE_TAG="${{ github.event.inputs.vscode_version }}"
           else
-            tag="$(curl -fsSL https://api.github.com/repos/microsoft/vscode/releases/latest | grep -m1 '"tag_name"' | sed 's/.*: "//; s/",//')"
-            echo "vscode=$tag" >> "$GITHUB_OUTPUT"
+            VSCODE_TAG="$(curl -fsSL https://api.github.com/repos/microsoft/vscode/releases/latest | python3 -c 'import sys,json;print(json.load(sys.stdin)["tag_name"])')"
           fi
+          VSCODE_TAG="$(printf '%s' "$VSCODE_TAG" | tr -d '[:space:]')"
+          echo "vscode=$VSCODE_TAG" >> "$GITHUB_OUTPUT"
+          NODE_VERSION="$(curl -fsSL "https://raw.githubusercontent.com/microsoft/vscode/$VSCODE_TAG/.nvmrc" | tr -d '[:space:]')"
+          echo "node=$NODE_VERSION" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "picket=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
             echo "picket=0.0.0-dev" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbfile-dev libsecret-1-dev libnss3 libgtk-3-0
 
       - name: Prepare, build and package
         shell: bash
