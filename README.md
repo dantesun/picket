@@ -19,7 +19,7 @@ MVP 范围（当前发行）：**Linux (x64)** 与 **Windows (x64)**——`tar.g
 
 ## 快速开始
 
-从 [Releases](https://github.com/dantesun/picket/releases) 下载对应平台的压缩包，解压后运行 `picket`（Windows：`picket.exe`）。
+从 [Releases](https://github.com/dantesun/picket/releases) 下载对应平台的压缩包，解压后运行 `picket`（Linux）或 `Picket.exe`（Windows）。
 
 首次启动 iCode 时按 **F4** 添加模型配置。
 
