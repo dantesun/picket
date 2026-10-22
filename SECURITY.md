@@ -1,12 +1,12 @@
-# Reporting Security Issues
+# 报告安全问题
 
-If you discover a security issue in Picket, please report it privately instead of opening a public issue.
+如果你在 Picket 中发现安全问题，请通过私密渠道报告，不要公开发 issue。
 
-- **GitHub private vulnerability reporting**: use the "Report a vulnerability" button on the repository's Security tab.
-- Include: affected version, platform, reproduction steps, and impact.
+- **GitHub 私密漏洞报告**：使用仓库 Security 标签页的「Report a vulnerability」按钮。
+- 请包含：受影响版本、平台、复现步骤、影响范围。
 
-We treat security reports confidentially and will acknowledge receipt within 3 business days.
+我们会保密处理安全报告，并在 3 个工作日内确认收到。
 
-## Sandbox caveat
+## 沙箱注意
 
-Picket's build does not sandbox arbitrary code: extensions and agent skill scripts run with your user permissions. Use the per-project devcontainer + egress firewall profiles for agent workloads and review third-party extensions and skills before installing.
+Picket 的构建本身不会对任意代码做沙箱隔离：扩展与 agent 的 skill 脚本以你的用户权限运行。请在 agent 工作负载中使用按项目的 devcontainer 与出站防火墙配置，并在安装前审查第三方扩展与 skill。
