@@ -3,8 +3,9 @@
 #
 # Usage: prepare.sh <vscode-version> <picket-version> <linux|darwin|win32> [x64|arm64]
 #
-# Follows the VSCodium pattern: clone microsoft/vscode, lay down our
-# product.json, build with npm/gulp, then package platform artifacts.
+# Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
+# (merge, not overwrite — upstream fields like builtInExtensions must stay),
+# build with npm/gulp, then package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -30,11 +31,22 @@ rm -rf "$ROOT_DIR/vscode"
 git clone --depth 1 --branch "$VSCODE_VERSION" \
   https://github.com/microsoft/vscode.git "$ROOT_DIR/vscode"
 
-echo "==> [picket] Applying product.json (rename, telemetry off, Open VSX gallery)"
-cp "$SCRIPT_DIR/product.json" "$ROOT_DIR/vscode/product.json"
+echo "==> [picket] Patching product.json (rename, telemetry off, Open VSX gallery)"
+cd "$ROOT_DIR/vscode"
+python3 - "$SCRIPT_DIR/product.json" <<'PYEOF'
+import json, sys
+patch_path = sys.argv[1]
+with open('product.json', encoding='utf-8') as f:
+    product = json.load(f)
+with open(patch_path, encoding='utf-8') as f:
+    patch = json.load(f)
+product.update(patch)
+with open('product.json', 'w', encoding='utf-8') as f:
+    json.dump(product, f, indent=2, ensure_ascii=False)
+print('Patched keys:', ', '.join(sorted(patch.keys())))
+PYEOF
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
-cd "$ROOT_DIR/vscode"
 npm ci --no-audit --no-fund
 
 case "$PLATFORM" in
