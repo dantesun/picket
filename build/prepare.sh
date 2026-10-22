@@ -5,7 +5,8 @@
 #
 # Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
 # (merge, not overwrite — upstream fields like builtInExtensions must stay),
-# build with npm/gulp, then package platform artifacts.
+# trim built-in extensions to the minimal set, build with npm/gulp, then
+# package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -45,6 +46,17 @@ with open('product.json', 'w', encoding='utf-8') as f:
     json.dump(product, f, indent=2, ensure_ascii=False)
 print('Patched keys:', ', '.join(sorted(patch.keys())))
 PYEOF
+
+echo "==> [picket] Trimming built-in extensions to the minimal set"
+REMOVE_COUNT=0
+while IFS= read -r ext; do
+  [ -z "$ext" ] && continue
+  if [ -d "extensions/$ext" ]; then
+    rm -rf "extensions/$ext"
+    REMOVE_COUNT=$((REMOVE_COUNT + 1))
+  fi
+done < "$SCRIPT_DIR/extensions-remove.list"
+echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
 npm ci --no-audit --no-fund
