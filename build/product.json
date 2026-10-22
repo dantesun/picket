@@ -1,0 +1,27 @@
+# Picket product.json — applied on top of upstream microsoft/vscode at build time.
+{
+  "nameShort": "picket",
+  "nameLong": "Picket",
+  "applicationName": "picket",
+  "dataFolderName": ".picket",
+  "darwinBundleIdentifier": "io.picket.app",
+  "win32MutexName": "picket",
+  "win32DirName": "Picket",
+  "win32NameVersion": "Picket",
+  "win32RegValueName": "Picket",
+  "win32AppUserModelId": "io.picket.app",
+  "win32ShellNameShort": "Picket",
+  "urlProtocol": "picket",
+  "linuxExecutableName": "picket",
+  "reportIssueUrl": "https://github.com/dantesun/picket/issues",
+  "licenseName": "MIT",
+  "licenseUrl": "https://github.com/dantesun/picket/blob/main/LICENSE",
+  "removeTelemetry": true,
+  "enableTelemetry": false,
+  "extensionsGallery": {
+    "serviceUrl": "https://open-vsx.org/vscode/gallery",
+    "itemUrl": "https://open-vsx.org/vscode/item"
+  },
+  "updateUrl": "https://github.com/dantesun/picket/releases",
+  "quality": "stable"
+}
