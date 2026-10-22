@@ -3,11 +3,9 @@
 #
 # Usage: prepare.sh <vscode-version> <picket-version> <linux|darwin|win32> [x64|arm64]
 #
-# Follows the VSCodium pattern: clone microsoft/vscode, patch product.json
-# (merge, not overwrite — upstream fields like builtInExtensions must stay),
-# trim built-in extensions to the minimal set, patch out upstream Copilot
-# build hooks and hardcoded extension lists, build with npm/gulp,
-# then package platform artifacts.
+# Follows the VSCodium pattern: clone microsoft/vscode, apply all upstream
+# patches via build/patch-vscode.py (product.json merge, Copilot removal,
+# extension trims), build with npm/gulp, then package platform artifacts.
 set -euo pipefail
 
 VSCODE_VERSION="$1"
@@ -33,22 +31,8 @@ rm -rf "$ROOT_DIR/vscode"
 git clone --depth 1 --branch "$VSCODE_VERSION" \
   https://github.com/microsoft/vscode.git "$ROOT_DIR/vscode"
 
-echo "==> [picket] Patching product.json (rename, telemetry off, Open VSX gallery)"
-cd "$ROOT_DIR/vscode"
-python3 - "$SCRIPT_DIR/product.json" <<'PYEOF'
-import json, sys
-patch_path = sys.argv[1]
-with open('product.json', encoding='utf-8') as f:
-    product = json.load(f)
-with open(patch_path, encoding='utf-8') as f:
-    patch = json.load(f)
-product.update(patch)
-with open('product.json', 'w', encoding='utf-8') as f:
-    json.dump(product, f, indent=2, ensure_ascii=False)
-print('Patched keys:', ', '.join(sorted(patch.keys())))
-PYEOF
-
 echo "==> [picket] Trimming built-in extensions to the minimal set"
+cd "$ROOT_DIR/vscode"
 REMOVE_COUNT=0
 while IFS= read -r ext; do
   [ -z "$ext" ] && continue
@@ -59,61 +43,8 @@ while IFS= read -r ext; do
 done < "$SCRIPT_DIR/extensions-remove.list"
 echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
 
-echo "==> [picket] Patching out upstream Copilot build hooks (1.142 hardcodes Copilot)"
-python3 - <<'PYEOF'
-# Upstream 1.142 hard-codes the built-in Copilot extension into the min
-# packaging chain: prepareBuiltInCopilotRipgrepShim throws when
-# extensions/copilot/node_modules/@github/copilot/sdk is missing. Since
-# Picket removes Copilot entirely, make the guard a no-op.
-path = 'build/lib/copilot.ts'
-with open(path, encoding='utf-8') as f:
-    src = f.read()
-old = 'throw new Error(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}`);'
-new = 'console.warn(`[picket] Copilot extension removed; skipping ripgrep shim: ${copilotSdkBase}`);\n\t\treturn;'
-assert old in src, 'copilot.ts: prepareBuiltInCopilotRipgrepShim throw not found'
-src = src.replace(old, new, 1)
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(src)
-print('patched build/lib/copilot.ts (throw -> warn+return)')
-PYEOF
-
-echo "==> [picket] Patching build/npm/dirs.ts (skip removed extension dirs)"
-python3 - <<'PYEOF'
-# postinstall walks the hardcoded dirs list and runs npm ci in each.
-# Removed extension dirs would make spawn fail with ENOENT (invalid cwd),
-# so filter the list to directories that actually exist.
-path = 'build/npm/dirs.ts'
-with open(path, encoding='utf-8') as f:
-    src = f.read()
-old_import = "import { existsSync } from 'fs';"
-new_import = "import { existsSync } from 'fs';\nimport path from 'path';"
-assert old_import in src, 'dirs.ts import not found'
-src = src.replace(old_import, new_import, 1)
-old_arr = "'.vscode/extensions/vscode-pr-pinger',\n];"
-new_arr = "'.vscode/extensions/vscode-pr-pinger',\n].filter(dir => dir === '' || existsSync(path.join(import.meta.dirname, '../..', dir)));"
-assert old_arr in src, 'dirs.ts array end not found'
-src = src.replace(old_arr, new_arr, 1)
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(src)
-print('patched build/npm/dirs.ts (filter non-existent dirs)')
-PYEOF
-
-echo "==> [picket] Patching build/gulpfile.extensions.ts (filter removed tsconfigs)"
-python3 - <<'PYEOF'
-# gulpfile.extensions.ts hardcodes the list of extension tsconfig.json files
-# to compile. createExtensionTasks() fails when a tsconfig points at a
-# removed extension dir, so filter the list to existing files.
-path = 'build/gulpfile.extensions.ts'
-with open(path, encoding='utf-8') as f:
-    src = f.read()
-old = "'.vscode/extensions/vscode-pr-pinger/tsconfig.json',\n];"
-new = "'.vscode/extensions/vscode-pr-pinger/tsconfig.json',\n].filter(f => fs.existsSync(path.join(root, f)));"
-assert old in src, 'gulpfile.extensions.ts compilations end not found'
-src = src.replace(old, new, 1)
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(src)
-print('patched build/gulpfile.extensions.ts (filter non-existent tsconfigs)')
-PYEOF
+echo "==> [picket] Applying upstream patches (product.json, Copilot, extension lists)"
+python3 "$SCRIPT_DIR/patch-vscode.py"
 
 echo "==> [picket] Installing dependencies (npm ci; upstream no longer supports yarn)"
 npm ci --no-audit --no-fund
