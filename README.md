@@ -12,9 +12,13 @@ Picket is a [Code - OSS](https://github.com/microsoft/vscode) fork distributed a
 - **Per-project sandboxes** — devcontainer templates and egress firewall profiles keep an agent's terminal, builds and file operations inside the project.
 - **First-class iCode support** — preconfigured to run iCode as the built-in coding agent (BYO model, no telemetry, OTel-ready, Workflows & Skills supported).
 
+## Platform support
+
+MVP scope (current releases): **Linux (x64)** and **Windows (x64)** — `tar.gz` and `zip` archives. macOS and ARM64 builds are planned after the P0 validation loop; see `docs/roadmap.md`.
+
 ## Quick start
 
-Download the latest installer/archive for your platform from [Releases](https://github.com/dantesun/picket/releases), unpack and run `picket` (Windows: `picket.exe`).
+Download the latest archive for your platform from [Releases](https://github.com/dantesun/picket/releases), unpack and run `picket` (Windows: `picket.exe`).
 
 Press **F4** inside iCode on first launch to add a model profile.
 
@@ -38,7 +42,7 @@ Pushing a `v*` tag triggers the GitHub Actions release workflow (`.github/workfl
 
 1. Clone `microsoft/vscode` at the resolved upstream tag.
 2. Apply `build/product.json` — rename to Picket, telemetry off, Open VSX gallery, update channel to our releases.
-3. Build per-platform (linux / darwin / win32, x64) and package (`tar.gz` / `zip`).
+3. Build per-platform (linux / win32, x64 — MVP scope) and package (`tar.gz` / `zip`).
 4. Publish assets to the GitHub Release.
 
 Planned packaging upgrades: AppImage & deb, dmg, NSIS installer, code signing. See `docs/roadmap.md`.
