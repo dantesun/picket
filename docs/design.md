@@ -76,7 +76,7 @@
 
 | 编号 | 缺口 | 证据等级 | 影响 |
 |---|---|---|---|
-| K1 | **platform 层三套国外 provider 仍编译打包**：`extensions-remove.list` 只删 `extensions/copilot` 前端；`src/vs/platform/agentHost/node/` 下 `copilot/`、`claude/`、`codex/` 与 `otel/`、`clientTools/` 未裁剪，三套 SDK 依赖仍进入产物 | confirmed | 违反 G3；是 P2 阶段的核心工作量 |
+| K1 | **platform 层三套国外 provider 仍编译打包**：`extensions-remove.list` 只删 `extensions/copilot` 前端；`src/vs/platform/agentHost/node/` 下 `copilot/`、`claude/`、`codex/` 与 `otel/`、`clientTools/` 未裁剪，三套 SDK 依赖仍进入产物 | confirmed | 违反 G3；P2 阶段核心工作量。**2026-10-23 已部分落地**：52 号 JSON 删除已启用并本地验证 177/177 路径应用成功（`node/codex`、`node/otel`、`node/clientTools`、`common/otel`、`extensions/copilot` 及 `node/copilot`、`node/claude` 绝大部分源码已移除）；`node/copilot` 余 30 文件、`node/claude` 余 2 文件与三套 SDK 依赖待 53 号补丁 rebase 后清理 |
 | K2 | 聊天 UI 判断待实测：agentHost 聊天面板在 workbench 核心代码（`workbench/contrib/chat/browser/agentSessions/agentHost/`，544 文件命中），删扩展后能否直接渲染 iCode 未验证 | inferred → 待 P2.5 | 影响 UI 路线选择 |
 | K3 | workbench 中约 56 个文件含 copilot 专属逻辑（多为引导/设置类），删除扩展后的降级行为未逐文件验证 | inferred | P2 后需完整构建 + 冒烟 |
 | K4 | README 与 docs/roadmap.md 曾引用已删除的 `build/prepare.sh` | confirmed | 随本设计文档发布一并修订 |
@@ -152,6 +152,8 @@
 | **90-picket-*（新增）** | iCode 适配器注入、扩展清单、银行合规开关 | **Picket 自有** |
 
 > 已决策（2026-10-23 审核）：补丁执行器**对齐 VSCodium 机制**——JSON actions（rm -rf）+ `git apply --ignore-whitespace`，替换当前 Python 锚点脚本作为主执行路径；Python 脚本降级为过渡工具，完成迁移后移除。
+>
+> **落地状态（2026-10-23）**：`build/apply-patches.sh` 已实现并集成进 build.sh；52 号 JSON 删除已启用（177/177 路径在 1.142.0 验证应用成功）；53 号补丁已入库但**未启用**——其 base 上下文为 VSCodium master，与 1.142.0 不匹配，需 rebase（失败文件清单与步骤见 `build/patches/README.md`，为 P2 首个任务）。
 
 ### 5.3 CI 流水线（已落地）
 
@@ -215,6 +217,7 @@ versions ──► compile(linux) ──┐
 - 53 号：26 文件引用清理（provider 注册块整段删除、`providerConfigurations: []`、SDK 依赖删除、OTel 钩子 no-op）。
 - **修正**：`mockAgent.ts` 在 53 中被就地裁剪（移除 `historyRecordFixtures` 依赖）后保留，不需“恢复”，作 iCode 适配器参考。
 - Picket 补丁执行器已决策对齐 VSCodium 机制：JSON actions（rm -rf）+ git apply；当前 Python 锚点脚本只覆盖 7 处、不覆盖平台层，作为过渡工具迁移后移除。
+- **落地状态（2026-10-23）**：执行器 `build/apply-patches.sh` 已实现并集成（build.sh 在 patch-vscode.py 前调用）；52 已启用并本地实测 177/177 路径删除成功——`node/codex`、`node/otel`、`node/clientTools`、`common/otel`、`extensions/copilot` 整删，`node/copilot` 余 30 文件、`node/claude` 余 2 文件（`claudeProxyAuth.ts`、`claudeTerminalOutput.ts`）；53 已入库未启用，待 rebase 到 1.142.0（见 `build/patches/README.md`，P2 首个任务）。52 单独应用后完整编译预期失败（引用清理未完成），属预期中间态。
 
 ### 6.3 iCode 适配器四件套（P3）
 
@@ -285,7 +288,7 @@ src/vs/platform/agentHost/node/icode/
 
 | 阶段 | 目标 | 验证门（通过即进入下一阶段） |
 |---|---|---|
-| P0 | 钉版与补丁体系落地 | 引入 52/53 执行机制（JSON actions + git apply）；全量构建通过 |
+| P0 | 钉版与补丁体系落地 | 执行器与 52 已落地（2026-10-23，本地实测 177/177）；53 rebase 后全量构建通过 |
 | P1 | 品牌与微软绑定裁剪（已大部分完成） | 构建产物抓包无遥测/市场/更新出网 |
 | P2 | 零 provider 核心：52/53 对齐 | host 启动正常、编辑器正常、产物无三套 SDK |
 | P2.5 | 核心 UI 验证（新增，已决策路线） | 用裁剪 mockAgent 注册 mock provider，内置聊天面板可显示会话；通过则 UI 走核心面板直连 |
@@ -293,7 +296,7 @@ src/vs/platform/agentHost/node/icode/
 | P4 | 常驻 app-server | 多轮、工具审批、diff、中断全链路 |
 | P5 | UI/分发与品牌 | 安装包无国外 agent 字节；双平台冒烟 |
 
-待验证项：P2.5 面板渲染结果（决定 UI 路线是否成立）、56 个 copilot 引导文件降级行为、release.yml 四 job 真实 runner 验证、G6 L1 哈希比对脚本落地。
+待验证项：P2.5 面板渲染结果（决定 UI 路线是否成立）、56 个 copilot 引导文件降级行为、release.yml 四段真实 runner 验证（2026-10-23 run #13 已触发，versions 已通过，compile 进行中）、G6 L1 哈希比对脚本落地。
 
 ---
 
