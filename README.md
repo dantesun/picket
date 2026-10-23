@@ -1,8 +1,8 @@
-# Picket
+# Picket Code
 
 > 面向 AI 编码 agent 的加固版 VS Code 发行版——受控扩展、私有模型网关、按项目沙箱，开箱即用。
 
-Picket 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork），以干净、无遥测的二进制分发。它面向在可信、按项目隔离的环境中运行 AI 编码 agent 的团队，内置 [iCode](https://github.com/openJiuwen-ai/iCode) 作为唯一编码 agent——典型场景是银行 / 信创内网。整体设计思路见 [docs/design.md](docs/design.md)。
+Picket Code 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork），以干净、无遥测的二进制分发。它面向在可信、按项目隔离的环境中运行 AI 编码 agent 的团队，内置 [iCode](https://github.com/openJiuwen-ai/iCode) 作为唯一编码 agent——典型场景是银行 / 信创内网。整体设计思路见 [docs/design.md](docs/design.md)。
 
 ## 特性
 
@@ -19,7 +19,7 @@ MVP 范围（当前发行）：**Linux (x64)** 与 **Windows (x64)**——`tar.g
 
 ## 快速开始
 
-从 [Releases](https://github.com/dantesun/picket/releases) 下载对应平台的压缩包，解压后运行 `picket`（Linux）或 `Picket.exe`（Windows）。
+从 [Releases](https://github.com/dantesun/picket-code/releases) 下载对应平台的压缩包，解压后运行 `picket-code`（Linux）或 `Picket Code.exe`（Windows）。
 
 首次启动 iCode 时按 **F4** 添加模型配置。
 
@@ -29,7 +29,7 @@ MVP 范围（当前发行）：**Linux (x64)** 与 **Windows (x64)**——`tar.g
 
 ```bash
 # 1. 编译阶段：clone 钉版 → 裁剪扩展 → 打补丁 → npm ci → 上游 min 构建
-bash build/build.sh <vscode-version> <picket-version> <linux|win32> [x64|arm64]
+bash build/build.sh <vscode-version> <picket-code-version> <linux|win32> [x64|arm64]
 
 # 2. 打包阶段：解包 → 重命名 → 归档
 bash build/linux/package.sh <linux> [x64|arm64]     # Linux
@@ -51,7 +51,7 @@ bash build/linux/package.sh linux x64
 
 1. **versions**：解析上游 VS Code tag 与 Node 版本。
 2. **compile**（linux / win32 矩阵）：在钉版 tag 处克隆 `microsoft/vscode`，裁剪内置扩展（默认离线），应用补丁，`npm ci` 后执行上游 min 构建，产出 `vscode.tar.gz`。
-3. **package**：按平台解包、重命名为 `picket-*`、归档并生成 SHA256SUMS。
+3. **package**：按平台解包、重命名为 `picket-code-*`、归档并生成 SHA256SUMS。
 4. **release**：将产物发布到 GitHub Release。
 
 计划中的打包升级：AppImage 与 deb、dmg、NSIS 安装器、代码签名。见 `docs/roadmap.md`。
@@ -60,4 +60,4 @@ bash build/linux/package.sh linux x64
 
 本仓库为 MIT 许可。发行的二进制由 `microsoft/vscode`（MIT）构建，与 [VSCodium](https://vscodium.com) 采用相同模式。
 
-> Picket 与微软无关。“Visual Studio Code”是微软的商标。本项目仅使用开源的 Code - OSS 源码。
+> Picket Code 与微软无关。“Visual Studio Code”是微软的商标。本项目仅使用开源的 Code - OSS 源码。

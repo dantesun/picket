@@ -5,7 +5,7 @@
 #
 # Expects vscode.tar.gz (produced by the compile job) under the repo root.
 # Extracts it, renames the prebuilt VSCode-win32-<arch> folder to
-# picket-win32-<arch> and creates a zip. No compilation happens in this job,
+# picket-code-win32-<arch> and creates a zip. No compilation happens in this job,
 # so a packaging failure never re-runs the ~4 min compile.
 #
 # Windows rename is hardened: kill processes locking the tree, clear
@@ -30,7 +30,7 @@ case "$ARCH" in
   *) echo "Unknown arch: $ARCH (expected x64|arm64)" >&2; exit 1 ;;
 esac
 
-echo "==> [picket] Locating compile artifact"
+echo "==> [picket-code] Locating compile artifact"
 TARBALL="$(find "$ROOT_DIR" -maxdepth 2 -name 'vscode.tar.gz' | head -1)"
 if [ -z "$TARBALL" ]; then
   echo "vscode.tar.gz not found" >&2
@@ -44,9 +44,9 @@ if [ ! -d "$SRC_DIR" ]; then
   exit 1
 fi
 
-echo "==> [picket] Renaming VSCode-win32-$ARCH -> picket-win32-$ARCH"
+echo "==> [picket-code] Renaming VSCode-win32-$ARCH -> picket-code-win32-$ARCH"
 cd "$ROOT_DIR"
-OUT_DIR="picket-win32-$ARCH"
+OUT_DIR="picket-code-win32-$ARCH"
 rm -rf "$OUT_DIR"
 
 # Windows 下 mv 报 Permission denied 的常见根因：文件被残留进程占用、
@@ -74,14 +74,14 @@ if [ "$MOVED" -ne 1 ]; then
   exit 1
 fi
 
-echo "==> [picket] Creating picket-win32-$ARCH.zip"
+echo "==> [picket-code] Creating picket-code-win32-$ARCH.zip"
 if command -v 7z >/dev/null 2>&1; then
-  7z a -r -tzip "$ROOT_DIR/picket-win32-$ARCH.zip" "$OUT_DIR"
+  7z a -r -tzip "$ROOT_DIR/picket-code-win32-$ARCH.zip" "$OUT_DIR"
 elif [ -x /c/Windows/System32/tar.exe ]; then
-  /c/Windows/System32/tar.exe -a -c -f "$ROOT_DIR/picket-win32-$ARCH.zip" "$OUT_DIR"
+  /c/Windows/System32/tar.exe -a -c -f "$ROOT_DIR/picket-code-win32-$ARCH.zip" "$OUT_DIR"
 else
-  powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR' -DestinationPath '$ROOT_DIR/picket-win32-$ARCH.zip'"
+  powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR' -DestinationPath '$ROOT_DIR/picket-code-win32-$ARCH.zip'"
 fi
 
-echo "==> [picket] Windows package done"
-ls -lh "$ROOT_DIR/picket-win32-$ARCH.zip"
+echo "==> [picket-code] Windows package done"
+ls -lh "$ROOT_DIR/picket-code-win32-$ARCH.zip"

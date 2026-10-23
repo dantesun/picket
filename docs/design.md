@@ -1,4 +1,4 @@
-# Picket 设计文档
+# Picket Code 设计文档
 
 > 面向 AI 编码 agent 的加固版 VS Code 发行版——受控扩展、私有模型网关、按项目沙箱、iCode 一等公民。
 
@@ -6,11 +6,11 @@
 |---|---|
 | 文档状态 | **已发布（v1.0，2026-10-23 审核通过）** |
 | 版本日期 | 2026-10-23 |
-| 适用范围 | dantesun/picket 仓库（Code - OSS 发行版 fork） |
+| 适用范围 | dantesun/picket-code 仓库（Code - OSS 发行版 fork） |
 | 目标读者 | 项目负责人、银行科技评审、参与实施的工程师 |
 | 上游基准 | microsoft/vscode main（取证 SHA 29ea7eff）、VSCodium/vscodium master |
 
-本文档梳理 Picket 的整体设计思路：背景与目标、设计原则、现状（As Is）、目标架构（To Be）、构建体系、AgentHost 裁剪与 iCode 集成、安全合规、实施路线、风险与未决问题。关键结论标注证据等级：`confirmed`（源码/仓库实证）、`inferred`（间接证据推断）、`unknown`（待验证）。
+本文档梳理 Picket Code 的整体设计思路：背景与目标、设计原则、现状（As Is）、目标架构（To Be）、构建体系、AgentHost 裁剪与 iCode 集成、安全合规、实施路线、风险与未决问题。关键结论标注证据等级：`confirmed`（源码/仓库实证）、`inferred`（间接证据推断）、`unknown`（待验证）。
 
 ---
 
@@ -21,7 +21,7 @@
 - **区域银行 AI Coding 落地受三方面约束**：信创内网要求代码与数据不出网；金发〔2026〕8号要求模型备案、人工复核、日志留存不低于业务存续期；预算有限，倾向开源与自主可控方案。
 - **主流编码 agent 依赖公有云与国外服务**：Copilot、Claude Code、Codex 的 SDK 与遥测与银行合规边界冲突，且不可裁剪。
 - **iCode 具备银行侧友好属性**：全开源（Apache-2.0）、BYO 模型、无遥测、OTel 就绪、workflow 与审批内建；但无现成 IDE 宿主与渠道，需要发行版承载。
-- **Picket 的定位**：以 Code - OSS 为基底，裁掉微软绑定与国外 agent 实现，内置 iCode 作为唯一编码 agent，形成“离线、可控、可审计”的银行内网 IDE 发行版。
+- **Picket Code 的定位**：以 Code - OSS 为基底，裁掉微软绑定与国外 agent 实现，内置 iCode 作为唯一编码 agent，形成“离线、可控、可审计”的银行内网 IDE 发行版。
 
 ### 1.2 目标
 
@@ -65,10 +65,10 @@
 | 组件 | 职责 | 状态 |
 |---|---|---|
 | `build/build.sh` | 编译阶段：clone 钉版 → 裁扩展（`extensions-remove.list`）→ `patch-vscode.py` 打补丁 → npm ci（重试 5 次）→ `vscode-<plat>-<arch>-min` → 打包 vscode.tar.gz | confirmed，已提交 main |
-| `build/linux/package.sh` | 解包 → 重命名 `VSCode-linux-<arch>` → `picket-linux-<arch>` → tar.gz | confirmed，已提交 main |
+| `build/linux/package.sh` | 解包 → 重命名 `VSCode-linux-<arch>` → `picket-code-linux-<arch>` → tar.gz | confirmed，已提交 main |
 | `build/win32/package.sh` | 解包 → 杀占用进程/清只读属性 → 带重试 mv → robocopy /MOVE 兜底 → 7z/tar/Compress-Archive 三级压缩 | confirmed，已提交 main（修复 Permission denied 根因） |
 | `.github/workflows/release.yml` | 四 job：versions（解版本）→ compile（linux/win32 matrix）→ package → release | confirmed，已提交 main |
-| `build/product.json` | 品牌（picket/Picket）、telemetry off、Open VSX 市场、updateUrl 指向本项目 Releases | confirmed |
+| `build/product.json` | 品牌（picket-code/Picket Code）、telemetry off、Open VSX 市场、updateUrl 指向本项目 Releases | confirmed |
 | `build/patch-vscode.py` | 7 处锚点补丁：product.json merge、copilot.ts 守卫 no-op、npm/dirs.ts 过滤、gulpfile.extensions 过滤、lib/extensions 过滤、AppX 跳过、signtool 缺失容忍 | confirmed |
 | `build/extensions-remove.list` | 内置扩展最小集清单（保留 32 + 构建期 3，移除 65） | confirmed |
 
@@ -91,7 +91,7 @@
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ 发行层：picket 品牌、Open VSX 市场、更新通道     │  ← P1 已落地
+│ 发行层：picket-code 品牌、Open VSX 市场、更新通道     │  ← P1 已落地
 ├─────────────────────────────────────────────────┤
 │ 扩展层：最小内置集（32+3）＋受控市场按需安装     │  ← P1 已落地
 ├─────────────────────────────────────────────────┤
@@ -125,7 +125,7 @@
 
 ### 5.1 与 VSCodium 的对齐点
 
-| 环节 | VSCodium 做法 | Picket 现状 | 差距 |
+| 环节 | VSCodium 做法 | Picket Code 现状 | 差距 |
 |---|---|---|---|
 | 钉版 | version.sh 取 MS_COMMIT 钉版 | build.sh 由 CI versions job 传入 tag | 已对齐 |
 | 品牌与产品配置 | prepare_vscode.sh 用 jq setpath 改 product.json | patch-vscode.py 做 product.json merge | 已对齐（机制不同，效果等价） |
@@ -137,7 +137,7 @@
 
 ### 5.2 补丁分层体系（目标态）
 
-沿用 VSCodium 编号语义，新增 Picket 自有分层：
+沿用 VSCodium 编号语义，新增 Picket Code 自有分层：
 
 | 区间 | 内容 | 来源 |
 |---|---|---|
@@ -149,7 +149,7 @@
 | **52 / 53** | **copilot 全量删除（177 路径 + 26 文件引用清理）** | **VSCodium 复用** |
 | 60-61 | 安全加固 | VSCodium |
 | 80-81 | onboarding | VSCodium |
-| **90-picket-*（新增）** | iCode 适配器注入、扩展清单、银行合规开关 | **Picket 自有** |
+| **90-picket-code-*（新增）** | iCode 适配器注入、扩展清单、银行合规开关 | **Picket Code 自有** |
 
 > 已决策（2026-10-23 审核）：补丁执行器**对齐 VSCodium 机制**——JSON actions（rm -rf）+ `git apply --ignore-whitespace`，替换当前 Python 锚点脚本作为主执行路径；Python 脚本降级为过渡工具，完成迁移后移除。
 >
@@ -183,7 +183,7 @@ versions ──► compile(linux) ──┐
 |---|---|---|
 | 时间戳类 | gzip/tar/zip 归档头部的 mtime 字段（`build.sh` 的 `tar czf` 每次写入当前时间；Windows 打包的 zip 条目时间戳同理） | confirmed |
 | 时间戳类 | Windows 打包经 rcedit 改写图标/版本信息时写入 PE 头 timestamp | inferred |
-| 内容类 | TypeScript 编译产物与 sourcemap 含绝对路径（CI runner 路径如 `D:\a\picket\picket` 每次一致但跨机器不同） | inferred |
+| 内容类 | TypeScript 编译产物与 sourcemap 含绝对路径（CI runner 路径如 `D:\a\picket-code\picket-code` 每次一致但跨机器不同） | inferred |
 | 内容类 | 不同 runner（ubuntu-latest 版本漂移、windows-2022 补丁差异）上原生模块编译指纹不同；npm ci 固定版本但部分 native 产物含机器指纹 | inferred |
 | 内容类 | 上游产物中非 contenthash 命名的生成文件（构建时 manifest、SHASUMS 等） | inferred |
 
@@ -216,7 +216,7 @@ versions ──► compile(linux) ──┐
 - 52 号：177 条物理删除路径（含 80+ 测试文件、`historyRecordFixtures.ts`），workbench 路径 0 条。
 - 53 号：26 文件引用清理（provider 注册块整段删除、`providerConfigurations: []`、SDK 依赖删除、OTel 钩子 no-op）。
 - **修正**：`mockAgent.ts` 在 53 中被就地裁剪（移除 `historyRecordFixtures` 依赖）后保留，不需“恢复”，作 iCode 适配器参考。
-- Picket 补丁执行器已决策对齐 VSCodium 机制：JSON actions（rm -rf）+ git apply；当前 Python 锚点脚本只覆盖 7 处、不覆盖平台层，作为过渡工具迁移后移除。
+- Picket Code 补丁执行器已决策对齐 VSCodium 机制：JSON actions（rm -rf）+ git apply；当前 Python 锚点脚本只覆盖 7 处、不覆盖平台层，作为过渡工具迁移后移除。
 - **落地状态（2026-10-23）**：执行器 `build/apply-patches.sh` 已实现并集成（build.sh 在 patch-vscode.py 前调用）；52 已启用并本地实测 177/177 路径删除成功——`node/codex`、`node/otel`、`node/clientTools`、`common/otel`、`extensions/copilot` 整删，`node/copilot` 余 30 文件、`node/claude` 余 2 文件（`claudeProxyAuth.ts`、`claudeTerminalOutput.ts`）；53 已入库未启用，待 rebase 到 1.142.0（见 `build/patches/README.md`，P2 首个任务）。52 单独应用后完整编译预期失败（引用清理未完成），属预期中间态。
 
 ### 6.3 iCode 适配器四件套（P3）
@@ -262,7 +262,7 @@ src/vs/platform/agentHost/node/icode/
 
 ### 7.2 金发〔2026〕8号 关键条款映射
 
-| 条款要求 | Picket/iCode 落点 | 状态 |
+| 条款要求 | Picket Code/iCode 落点 | 状态 |
 |---|---|---|
 | 外部引入生成式模型需网信备案 | iCode BYO 模型，模型归属用户；备案责任在行内 | 产品可覆盖（行内自担） |
 | 高风险场景人工复核（第22条） | AgentHost pending_confirmation ↔ iCode manual 审批 | 产品内建（confirmed 机制，待 POC 实测） |
@@ -270,7 +270,7 @@ src/vs/platform/agentHost/node/icode/
 | 外包合同安全权责、名单制（第18条） | 供应商尽调 + DPA 条款 | 商务待办 |
 | 开源台账、供应链防投毒（第19条） | iCode Apache-2.0 可审计；**SBOM/依赖审计需自建** | 缺口（confirmed） |
 | 提示词注入、智能体安全（第25条） | iCode 护栏 + AgentHost 沙箱路径授权 | 待验证 |
-| 无头自动化不得绕过审批 | **Picket 禁用无头审批 bypass 路径** | 设计红线（inferred → 落实为配置） |
+| 无头自动化不得绕过审批 | **Picket Code 禁用无头审批 bypass 路径** | 设计红线（inferred → 落实为配置） |
 
 ### 7.3 扩展门控与受控市场
 
@@ -307,7 +307,7 @@ src/vs/platform/agentHost/node/icode/
 | 53 号补丁跨 26 文件，上游重构引发 rebase 成本 | 中 | 钉版节奏固定；补丁锚点断言显式报错 |
 | 内置聊天面板对非 copilot provider 兼容性未知 | 中 | P2.5 用 mockAgent 先验证，再决定外部 client 或薄扩展 |
 | 扩展删除清单误删银行所需语言服务（SQL/Python） | 中 | 发布前按数据开发场景复核清单 |
-| 无头 run 硬编码绕过审批（上游机制） | 高 | Picket 配置层禁用；合同与部署规范双重约束 |
+| 无头 run 硬编码绕过审批（上游机制） | 高 | Picket Code 配置层禁用；合同与部署规范双重约束 |
 | iCode 无认证/SLA/供应链台账 | 中 | 商务尽调 + 行内自建 SBOM/依赖审计 |
 | 重构后 CI 未真实跑通 | 中 | 手动 workflow_dispatch 首跑验证 |
 
@@ -330,7 +330,7 @@ src/vs/platform/agentHost/node/icode/
 | F3 | 聊天 UI 在 workbench 核心 | `workbench/contrib/chat/browser/agentSessions/agentHost/agentHost.contribution.ts` |
 | F4 | iCode one-shot CLI、OTel gRPC 可用、HTTP/protobuf 缺依赖 | iCode 源码 + 本地 debug.log 实证 |
 | F5 | 金发〔2026〕8号 八章三十二条，2026-06-18 印发 | nfra.gov.cn 官方全文 |
-| F6 | Picket 构建现状（build.sh/package.sh/release.yml/product.json/patch-vscode.py/extensions-remove.list） | dantesun/picket main（2026-10-23 读取） |
+| F6 | Picket Code 构建现状（build.sh/package.sh/release.yml/product.json/patch-vscode.py/extensions-remove.list） | dantesun/picket-code main（2026-10-23 读取） |
 | F7 | README/roadmap 曾引用已删除的 prepare.sh | 同上（K4 缺口，已随本版修订） |
 
 ### 10.2 术语表

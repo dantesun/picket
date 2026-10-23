@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Compile stage of the Picket build (aligned with the VSCodium pipeline).
+# Compile stage of the Picket Code build (aligned with the VSCodium pipeline).
 #
-# Usage: build.sh <vscode-version> <picket-version> <linux|win32> [x64|arm64]
+# Usage: build.sh <vscode-version> <picket-code-version> <linux|win32> [x64|arm64]
 #
 # This stage clones microsoft/vscode at the pinned tag, trims built-in
-# extensions, applies Picket patches (product.json merge + Copilot removal),
+# extensions, applies Picket Code patches (product.json merge + Copilot removal),
 # runs npm ci (with retry) and the upstream min build for this platform:
 # `vscode-<platform>-<arch>-min`. Note: the old VSCodium task names
 # (`vscode-min-prepack`, `vscode-<plat>-<arch>-min-packing`) no longer exist
@@ -35,12 +35,12 @@ case "$ARCH" in
   *) echo "Unknown arch: $ARCH (expected x64|arm64)" >&2; exit 1 ;;
 esac
 
-echo "==> [picket] Cloning microsoft/vscode@$VSCODE_VERSION"
+echo "==> [picket-code] Cloning microsoft/vscode@$VSCODE_VERSION"
 rm -rf "$ROOT_DIR/vscode"
 git clone --depth 1 --branch "$VSCODE_VERSION" \
   https://github.com/microsoft/vscode.git "$ROOT_DIR/vscode"
 
-echo "==> [picket] Trimming built-in extensions to the minimal set"
+echo "==> [picket-code] Trimming built-in extensions to the minimal set"
 cd "$ROOT_DIR/vscode"
 REMOVE_COUNT=0
 while IFS= read -r ext; do
@@ -53,12 +53,12 @@ while IFS= read -r ext; do
 done < "$SCRIPT_DIR/extensions-remove.list"
 echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
 
-echo "==> [picket] Applying Picket patches (product.json, Copilot, extension lists)"
+echo "==> [picket-code] Applying Picket Code patches (product.json, Copilot, extension lists)"
 bash "$SCRIPT_DIR/apply-patches.sh" "$ROOT_DIR/vscode"
 PYTHON_BIN="$(command -v python3 || command -v python)"
 "$PYTHON_BIN" "$SCRIPT_DIR/patch-vscode.py"
 
-echo "==> [picket] Installing dependencies (npm ci; retry up to 5 times)"
+echo "==> [picket-code] Installing dependencies (npm ci; retry up to 5 times)"
 for i in 1 2 3 4 5; do
   if npm ci --no-audit --no-fund; then
     break
@@ -71,7 +71,7 @@ for i in 1 2 3 4 5; do
   sleep $(( 15 * (i + 1) ))
 done
 
-echo "==> [picket] Building vscode-$PLATFORM-$ARCH-min"
+echo "==> [picket-code] Building vscode-$PLATFORM-$ARCH-min"
 export NODE_OPTIONS="--max-old-space-size=8192"
 export VSCODE_PUBLISH_COUNTER=1
 npm run gulp "vscode-$PLATFORM-$ARCH-min"
@@ -81,7 +81,7 @@ if [ ! -d "$ROOT_DIR/VSCode-$PLATFORM-$ARCH" ]; then
   exit 1
 fi
 
-echo "==> [picket] Compressing vscode/ + VSCode-$PLATFORM-$ARCH for the package stage"
+echo "==> [picket-code] Compressing vscode/ + VSCode-$PLATFORM-$ARCH for the package stage"
 cd "$ROOT_DIR"
 tar -czf vscode.tar.gz \
   --exclude='vscode/node_modules' \
@@ -89,5 +89,5 @@ tar -czf vscode.tar.gz \
   --exclude='vscode/.build/node' \
   vscode "VSCode-$PLATFORM-$ARCH"
 
-echo "==> [picket] Compile stage done. Picket v$PICKET_VERSION ($PLATFORM-$ARCH) from VS Code $VSCODE_VERSION"
+echo "==> [picket-code] Compile stage done. Picket Code v$PICKET_VERSION ($PLATFORM-$ARCH) from VS Code $VSCODE_VERSION"
 ls -lh "$ROOT_DIR/vscode.tar.gz"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply Picket / VSCodium patches to a vscode source tree.
+# Apply Picket Code / VSCodium patches to a vscode source tree.
 #
 # Usage: apply-patches.sh [vscode-source-dir]   (default: current directory)
 #
@@ -19,12 +19,12 @@ PATCHES_DIR="$SCRIPT_DIR/patches"
 VSCODE="${1:-$(pwd)}"
 cd "$VSCODE"
 
-echo "==> [picket] Patching vscode tree at $VSCODE"
+echo "==> [picket-code] Patching vscode tree at $VSCODE"
 
 # ---- 1. JSON actions (physical removals, VSCodium semantics) ----
 for f in "$PATCHES_DIR"/*.json; do
   [ -e "$f" ] || continue
-  echo "==> [picket] JSON actions: $(basename "$f")"
+  echo "==> [picket-code] JSON actions: $(basename "$f")"
   python3 - "$f" <<'PYEOF'
 import json, os, shutil, sys
 manifest = json.load(open(sys.argv[1]))
@@ -51,7 +51,7 @@ if [ -f "$APPLY_LIST" ]; then
     patch="$(echo "$patch" | sed 's/\r$//')"
     [ -z "$patch" ] && continue
     case "$patch" in \#*) continue;; esac
-    echo "==> [picket] git apply: $patch"
+    echo "==> [picket-code] git apply: $patch"
     if ! git apply --ignore-whitespace --check "$PATCHES_DIR/$patch" 2>"$PATCHES_DIR/.check.err"; then
       echo "FATAL: $patch does not apply to this tree" >&2
       grep '^error:' "$PATCHES_DIR/.check.err" | head -20 >&2 || true
@@ -63,4 +63,4 @@ if [ -f "$APPLY_LIST" ]; then
   done < "$APPLY_LIST"
 fi
 
-echo "==> [picket] All patches applied."
+echo "==> [picket-code] All patches applied."

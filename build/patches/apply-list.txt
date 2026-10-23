@@ -8,4 +8,4 @@
 #   - 53-ext-copilot-remove-it.patch : ENABLED — rebase v2 against 1.142.0 + 52
 #     (28 modified + 2 deleted files), verified forward on a clean worktree.
 53-ext-copilot-remove-it.patch
-54-picket-disable-node-compile-cache.patch
+54-picket-code-disable-node-compile-cache.patch

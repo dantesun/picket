@@ -5,7 +5,7 @@
 #
 # Expects vscode.tar.gz (produced by the compile job) under the repo root.
 # Extracts it, renames the prebuilt VSCode-linux-<arch> folder to
-# picket-linux-<arch> and creates a tar.gz archive. No compilation happens
+# picket-code-linux-<arch> and creates a tar.gz archive. No compilation happens
 # in this job, so a packaging failure never re-runs the ~4 min compile.
 #
 # Note: the modern upstream gulpfile already produced the complete product
@@ -30,7 +30,7 @@ case "$ARCH" in
   *) echo "Unknown arch: $ARCH (expected x64|arm64)" >&2; exit 1 ;;
 esac
 
-echo "==> [picket] Locating compile artifact"
+echo "==> [picket-code] Locating compile artifact"
 TARBALL="$(find "$ROOT_DIR" -maxdepth 2 -name 'vscode.tar.gz' | head -1)"
 if [ -z "$TARBALL" ]; then
   echo "vscode.tar.gz not found" >&2
@@ -44,14 +44,14 @@ if [ ! -d "$SRC_DIR" ]; then
   exit 1
 fi
 
-echo "==> [picket] Renaming VSCode-linux-$ARCH -> picket-linux-$ARCH"
+echo "==> [picket-code] Renaming VSCode-linux-$ARCH -> picket-code-linux-$ARCH"
 cd "$ROOT_DIR"
-OUT_DIR="picket-linux-$ARCH"
+OUT_DIR="picket-code-linux-$ARCH"
 rm -rf "$OUT_DIR"
 mv "$SRC_DIR" "$OUT_DIR"
 
-echo "==> [picket] Archiving"
-tar czf "$ROOT_DIR/picket-linux-$ARCH.tar.gz" "$OUT_DIR"
+echo "==> [picket-code] Archiving"
+tar czf "$ROOT_DIR/picket-code-linux-$ARCH.tar.gz" "$OUT_DIR"
 
-echo "==> [picket] Linux package done"
-ls -lh "$ROOT_DIR/picket-linux-$ARCH.tar.gz"
+echo "==> [picket-code] Linux package done"
+ls -lh "$ROOT_DIR/picket-code-linux-$ARCH.tar.gz"

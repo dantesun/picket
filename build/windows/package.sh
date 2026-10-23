@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Windows package stage (mirrors VSCodium build/windows/package.sh, scoped to
-# the Picket MVP): extract the compile artifact, npm ci (retry), drop stale
+# the Picket Code MVP): extract the compile artifact, npm ci (retry), drop stale
 # native .node files, generate Group Policy definitions, run the upstream
-# `vscode-win32-x64-min-packing` gulp task, rename to picket-win32-* (with
+# `vscode-win32-x64-min-packing` gulp task, rename to picket-code-win32-* (with
 # Windows file-lock resilience), archive as zip.
 #
-# Deviations from VSCodium: no distro mixin (Picket patches product.json at
+# Deviations from VSCodium: no distro mixin (Picket Code patches product.json at
 # compile time), no installer/signing/MSI (MVP ships the raw zip), no REH.
 set -euo pipefail
 
@@ -15,7 +15,7 @@ ARCH="${2:-x64}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "==> [picket] Locating compile artifact"
+echo "==> [picket-code] Locating compile artifact"
 TARBALL="$(find "$ROOT_DIR" -maxdepth 2 -name 'vscode.tar.gz' | head -1)"
 if [ -z "$TARBALL" ]; then
   echo "vscode.tar.gz not found" >&2
@@ -57,9 +57,9 @@ node build/lib/policies/policyGenerator.ts build/lib/policies/policyData.jsonc w
 
 npm run gulp "vscode-win32-$ARCH-min-packing"
 
-echo "==> [picket] Renaming to picket-win32-$ARCH"
+echo "==> [picket-code] Renaming to picket-code-win32-$ARCH"
 cd "$ROOT_DIR"
-OUT_DIR="picket-win32-$ARCH"
+OUT_DIR="picket-code-win32-$ARCH"
 rm -rf "$OUT_DIR"
 # Windows 下 mv 报 Permission denied 的常见根因：文件被残留进程占用、
 # 只读属性、或 Defender 实时扫描的瞬时文件锁。先处理前两类，再带重试
@@ -86,14 +86,14 @@ if [ "$MOVED" -ne 1 ]; then
   exit 1
 fi
 
-echo "==> [picket] Archiving as zip"
+echo "==> [picket-code] Archiving as zip"
 if command -v 7z >/dev/null 2>&1; then
-  (cd "$OUT_DIR" && 7z a -tzip "$ROOT_DIR/picket-win32-$ARCH.zip" . >/dev/null)
+  (cd "$OUT_DIR" && 7z a -tzip "$ROOT_DIR/picket-code-win32-$ARCH.zip" . >/dev/null)
 elif [ -x "/c/Program Files/7-Zip/7z.exe" ]; then
-  (cd "$OUT_DIR" && "/c/Program Files/7-Zip/7z.exe" a -tzip "$ROOT_DIR/picket-win32-$ARCH.zip" . >/dev/null)
+  (cd "$OUT_DIR" && "/c/Program Files/7-Zip/7z.exe" a -tzip "$ROOT_DIR/picket-code-win32-$ARCH.zip" . >/dev/null)
 else
-  powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR/*' -DestinationPath '$ROOT_DIR/picket-win32-$ARCH.zip'"
+  powershell -NoProfile -Command "Compress-Archive -Force -Path './$OUT_DIR/*' -DestinationPath '$ROOT_DIR/picket-code-win32-$ARCH.zip'"
 fi
 
-echo "==> [picket] Windows package done"
-ls -lh "$ROOT_DIR/picket-win32-$ARCH.zip"
+echo "==> [picket-code] Windows package done"
+ls -lh "$ROOT_DIR/picket-code-win32-$ARCH.zip"

@@ -19,14 +19,14 @@ permissions:
   contents: write
 
 jobs:
-  # Version resolution first: vscode tag, upstream node version, picket version.
+  # Version resolution first: vscode tag, upstream node version, picket-code version.
   versions:
     name: Resolve versions
     runs-on: ubuntu-latest
     outputs:
       vscode: ${{ steps.versions.outputs.vscode }}
       node: ${{ steps.versions.outputs.node }}
-      picket: ${{ steps.versions.outputs.picket }}
+      picket-code: ${{ steps.versions.outputs.picket-code }}
     steps:
       - name: Resolve versions (vscode tag, node from upstream .nvmrc)
         id: versions
@@ -42,9 +42,9 @@ jobs:
           NODE_VERSION="$(curl -fsSL "https://raw.githubusercontent.com/microsoft/vscode/$VSCODE_TAG/.nvmrc" | tr -d '[:space:]')"
           echo "node=$NODE_VERSION" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "picket=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "picket-code=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
-            echo "picket=0.0.0-dev" >> "$GITHUB_OUTPUT"
+            echo "picket-code=0.0.0-dev" >> "$GITHUB_OUTPUT"
           fi
 
   # Compile stage: clone + patch + npm ci + upstream min build, then ship the
@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           bash build/build.sh "${{ needs.versions.outputs.vscode }}" \
-            "${{ needs.versions.outputs.picket }}" \
+            "${{ needs.versions.outputs.picket-code }}" \
             "${{ matrix.platform }}" "${{ matrix.arch }}"
 
       - name: Upload vscode artifact
@@ -99,7 +99,7 @@ jobs:
           retention-days: 30
 
   # Package stage: per-platform, consumes the compile artifact, renames to
-  # picket-*, archives, checksums. Mirrors VSCodium's package jobs.
+  # picket-code-*, archives, checksums. Mirrors VSCodium's package jobs.
   package:
     name: "Package ${{ matrix.platform }}-${{ matrix.arch }}"
     needs: [versions, compile]
@@ -137,14 +137,14 @@ jobs:
         shell: bash
         run: |
           cd "$GITHUB_WORKSPACE"
-          sha256sum picket-${{ matrix.platform }}-${{ matrix.arch }}.* > SHA256SUMS
+          sha256sum picket-code-${{ matrix.platform }}-${{ matrix.arch }}.* > SHA256SUMS
 
-      - name: Upload picket artifacts
+      - name: Upload picket-code artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: picket-${{ matrix.platform }}-${{ matrix.arch }}
+          name: picket-code-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
-            picket-${{ matrix.platform }}-${{ matrix.arch }}.*
+            picket-code-${{ matrix.platform }}-${{ matrix.arch }}.*
             SHA256SUMS
           if-no-files-found: error
 

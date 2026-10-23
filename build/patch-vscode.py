@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Picket patches for a microsoft/vscode source tree.
+"""Picket Code patches for a microsoft/vscode source tree.
 
 Run from the vscode source root. Every patch asserts its anchor text so a
 changed upstream version fails loudly instead of silently mis-patching.
@@ -17,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent  # repo root (picket/)
+ROOT = Path(__file__).resolve().parent.parent  # repo root (picket-code/)
 VSCODE = Path.cwd()  # vscode source root
 
 
@@ -43,7 +43,7 @@ def main() -> None:
     patch_file(
         'build/lib/copilot.ts',
         'throw new Error(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}`);',
-        'console.warn(`[picket] Copilot extension removed; skipping ripgrep shim: ${copilotSdkBase}`);\n\t\treturn;',
+        'console.warn(`[picket-code] Copilot extension removed; skipping ripgrep shim: ${copilotSdkBase}`);\n\t\treturn;',
         'prepareBuiltInCopilotRipgrepShim throw -> warn+return',
     )
 
@@ -78,7 +78,7 @@ def main() -> None:
     )
 
 
-    # 6. gulpfile.vscode.ts: skip AppX/context-menu packaging (no win32ContextMenu in picket product.json)
+    # 6. gulpfile.vscode.ts: skip AppX/context-menu packaging (no win32ContextMenu in picket-code product.json)
     patch_file(
         'build/gulpfile.vscode.ts',
         "if (quality === 'stable' || quality === 'insider') {",
@@ -94,7 +94,7 @@ def main() -> None:
         'signtool missing -> resolve(false)',
     )
 
-    print('All picket patches applied.')
+    print('All picket-code patches applied.')
 
 
 
