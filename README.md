@@ -2,7 +2,7 @@
 
 > 面向 AI 编码 agent 的加固版 VS Code 发行版——受控扩展、私有模型网关、按项目沙箱，开箱即用。
 
-Picket 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork），以干净、无遥测的二进制分发。它面向在可信、按项目隔离的环境中运行 AI 编码 agent（Claude Code、OpenCode、[iCode](https://github.com/openJiuwen-ai/iCode)）的团队——典型场景是企业 / 信创内网。
+Picket 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork），以干净、无遥测的二进制分发。它面向在可信、按项目隔离的环境中运行 AI 编码 agent 的团队，内置 [iCode](https://github.com/openJiuwen-ai/iCode) 作为唯一编码 agent——典型场景是银行 / 信创内网。整体设计思路见 [docs/design.md](docs/design.md)。
 
 ## 特性
 
@@ -11,7 +11,7 @@ Picket 是 [Code - OSS](https://github.com/microsoft/vscode) 的发行版（fork
 - **受控扩展**——默认使用 Open VSX，可指向自建市场；可在其上叠加白名单策略。
 - **私有模型网关**——设计上配合自托管网关（如 LiteLLM），让 agent 只访问你控制的模型端点。
 - **按项目沙箱**——devcontainer 模板与出站防火墙配置，把 agent 的终端、构建与文件操作约束在项目内。
-- **iCode 一等公民支持**——预置 iCode 作为内置编码 agent（BYO 模型、无遥测、OTel 就绪、支持 Workflows 与 Skills）。
+- **iCode 一等公民支持**——内置 iCode 作为唯一编码 agent（BYO 模型、无遥测、OTel 就绪、支持 Workflows 与 Skills）；发行版不含 Copilot/Claude/Codex 等国外 agent 实现。
 
 ## 平台支持
 
@@ -25,27 +25,34 @@ MVP 范围（当前发行）：**Linux (x64)** 与 **Windows (x64)**——`tar.g
 
 ## 从源码构建
 
+构建分两个阶段（对齐 VSCodium 流水线）：先编译、后打包，两阶段互不串行重跑。
+
 ```bash
-bash build/prepare.sh <vscode-version> <picket-version> <linux|darwin|win32> [x64|arm64]
+# 1. 编译阶段：clone 钉版 → 裁剪扩展 → 打补丁 → npm ci → 上游 min 构建
+bash build/build.sh <vscode-version> <picket-version> <linux|win32> [x64|arm64]
+
+# 2. 打包阶段：解包 → 重命名 → 归档
+bash build/linux/package.sh <linux> [x64|arm64]     # Linux
+bash build/win32/package.sh <win32> [x64|arm64]     # Windows
 ```
 
 示例：
 
 ```bash
-bash build/prepare.sh 1.99.1 0.1.0 linux x64
+bash build/build.sh 1.142.0 0.1.0 linux x64
+bash build/linux/package.sh linux x64
 ```
 
-脚本会克隆 `microsoft/vscode@<vscode-version>`、合并打补丁 `build/product.json`（改名、关闭遥测、Open VSX 市场、更新通道指向本项目 Releases）、按最小集裁剪内置扩展、构建并打包目标平台二进制。
+编译阶段会克隆 `microsoft/vscode@<vscode-version>`、按 `build/extensions-remove.list` 裁剪内置扩展、应用补丁（`build/product.json` 改名/关遥测/Open VSX 市场、copilot 移除等），构建并产出 `vscode.tar.gz` 供打包阶段消费。
 
 ## 发行流水线
 
-推送 `v*` 标签即触发 GitHub Actions 发行工作流（`.github/workflows/release.yml`）：
+推送 `v*` 标签（或手动 `workflow_dispatch`）触发 GitHub Actions 发行工作流（`.github/workflows/release.yml`），四段流水线：
 
-1. 在解析出的上游标签处克隆 `microsoft/vscode`。
-2. 应用 `build/product.json`——改名为 Picket、关闭遥测、Open VSX 市场、更新通道指向本项目 Releases。
-3. 按最小集裁剪内置扩展（`build/extensions-remove.list`，默认离线）。
-4. 按平台构建（linux / win32，x64——MVP 范围）并打包（`tar.gz` / `zip`）。
-5. 将产物发布到 GitHub Release。
+1. **versions**：解析上游 VS Code tag 与 Node 版本。
+2. **compile**（linux / win32 矩阵）：在钉版 tag 处克隆 `microsoft/vscode`，裁剪内置扩展（默认离线），应用补丁，`npm ci` 后执行上游 min 构建，产出 `vscode.tar.gz`。
+3. **package**：按平台解包、重命名为 `picket-*`、归档并生成 SHA256SUMS。
+4. **release**：将产物发布到 GitHub Release。
 
 计划中的打包升级：AppImage 与 deb、dmg、NSIS 安装器、代码签名。见 `docs/roadmap.md`。
 
