@@ -8,6 +8,7 @@ Status: 2026-10-23, pinned upstream tag `1.142.0` (commit d956e8a6), 53 rebase c
 |---|---|---|
 | `52-ext-copilot-remove-it.json` | JSON actions (physical removals) | **ENABLED** — 177/177 removal paths verified present on 1.142.0 and applied cleanly |
 | `53-ext-copilot-remove-it.patch` | git apply (reference cleanup, 30 files) | **ENABLED (rebase v2)** — regenerated against 1.142.0 + 52; 28 modified + 2 deleted files |
+| `54-picket-disable-node-compile-cache.patch` | git apply (build reproducibility) | **ENABLED** — `shouldGenerateNodeCompileCache` returns false (win32 EBUSY + nondeterministic cache output) |
 
 Source: https://github.com/VSCodium/vscodium/tree/master/patches (MIT). Picket applies
 52 via `build/apply-patches.sh` (JSON removals) then 53 (git apply) in order.
@@ -64,4 +65,19 @@ applies cleanly with `git apply --ignore-whitespace --check`.
 ## Build order reminder
 
 52 alone removes the providers' sources, so a full compile FAILS until 53 (reference
-cleanup) is applied too. Both are now in `apply-list.txt` and run in CI order 52 → 53.
+cleanup) is applied too. All three are now in `apply-list.txt` and run in CI order
+52 → 53 → 54.
+
+## Why Picket disables the node compile cache (54)
+
+Upstream `vscode-<plat>-<arch>-min` ends with the `-min-ci` task, whose win32
+`generateNodeCompileCacheTask` launches node to pre-warm `node-compile-cache` inside
+`user-data`. On Windows runners this repeatedly failed with `EBUSY: resource busy or
+locked, unlink .../user-data/...` (runner AV / handle timing), e.g. run #16
+`vscode-cache-SKmlQf/user-data/Network/Cookies`, `vscode-cache-GedyPu/user-data/Shared
+Dictionary/db-journal`. VSCodium does NOT patch `shouldGenerateNodeCompileCache`
+(checked its master patches, 2026-10-23); it keeps the upstream logic and its own
+runner does not trip the same lock. Picket opts out deliberately: the caches are
+nondeterministic build output, contradicting the reproducibility goal in
+`docs/design.md` (byte-level-approximate rebuilds), and Picket ships no quality
+channel that would consume them.

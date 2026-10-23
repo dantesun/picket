@@ -1,0 +1,22 @@
+diff --git a/build/lib/nodeCompileCache.ts b/build/lib/nodeCompileCache.ts
+index 988dc11a..38c35384 100644
+--- a/build/lib/nodeCompileCache.ts
++++ b/build/lib/nodeCompileCache.ts
+@@ -25,12 +25,11 @@ export interface INodeCompileCachePaths {
+ }
+ 
+ export function shouldGenerateNodeCompileCache(platform: string, arch: string, product: INodeCompileCacheProduct): boolean {
+-	if (!product.quality) {
+-		return false;
+-	}
+-
+-	// TODO: Re-enable POSIX caches once the runtime fixes portable caching with eager/read-only options.
+-	return platform === 'win32' && arch === 'x64';
++	// Picket: never generate node compile caches at build time. Windows builds
++	// hit EBUSY on the generated user-data cache dirs (runner/AV file lock), and
++	// caches are nondeterministic build output, contradicting reproducible
++	// builds. VSCodium keeps the upstream logic; Picket opts out deliberately.
++	return false;
+ }
+ 
+ export function getNodeCompileCachePaths(platform: string, outputDirectory: string, versionedResourcesFolder: string, product: INodeCompileCacheProduct): INodeCompileCachePaths {
