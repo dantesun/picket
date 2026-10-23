@@ -60,9 +60,11 @@ Picket 只内置**最小必要**的扩展：降低攻击面、移除微软/Copil
 | 内部测试 | 4 | vscode-api-tests、vscode-colorize-tests、vscode-colorize-perf-tests、vscode-test-resolver | 否 |
 | 冗余主题 | 9 | theme-monokai、theme-seti、theme-solarized-* 等 | 是 |
 
+> 注：语言语法类（含 SQL/Python）是否保留，按银行数据开发场景在发布前复核（见 `docs/design.md` 第 9 章）。
+
 ## 机制
 
-- `build/extensions-remove.list`：每行一个扩展目录名；`prepare.sh` 在 `npm ci`/`gulp` 前删除这些目录。
+- `build/extensions-remove.list`：每行一个扩展目录名；`build/build.sh` 在 `npm ci`/`gulp` 前删除这些目录。
 - JS 调试三件套由 `product.json` 的 `builtInExtensions` 配置，不受影响。
 - 恢复某扩展：从清单删除对应行后重建，或后续从受控市场安装。
 
