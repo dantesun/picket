@@ -22,5 +22,6 @@
     "itemUrl": "https://open-vsx.org/vscode/item"
   },
   "updateUrl": "https://github.com/dantesun/picket/releases",
-  "quality": "stable"
+  "quality": "stable",
+  "builtInExtensions": []
 }
