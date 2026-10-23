@@ -178,7 +178,28 @@
       "src/vs/platform/agentHost/test/node/copilotSecondaryAssignmentContext.test.ts",
       "src/vs/platform/agentHost/test/node/providerIntegration/copilotCustomizations.integrationTest.ts",
       "src/vs/platform/agentHost/test/node/sessionSandbox.test.ts",
-      "src/vs/platform/agentHost/common/otel/agentHostOTelService.ts"
+      "src/vs/platform/agentHost/common/otel/agentHostOTelService.ts",
+      "src/vs/platform/agentHost/node/copilot/copilotBuiltinAgents.ts",
+      "src/vs/platform/agentHost/node/copilot/copilotSessionSandbox.ts",
+      "src/vs/platform/agentHost/node/copilot/copilotSessionHistory.ts",
+      "src/vs/platform/agentHost/node/claude/claudeSavedChatReader.ts",
+      "src/vs/platform/agentHost/node/claude/claudeTerminalOutput.ts",
+      "src/vs/platform/agentHost/test/node/copilotBuiltinAgents.test.ts",
+      "src/vs/platform/agentHost/test/node/claude/claudeSavedChatReader.test.ts",
+      "src/vs/platform/agentHost/test/node/claudeTerminalOutput.test.ts",
+      "src/vs/platform/agentHost/test/node/copilotManagedSettings.test.ts",
+      "src/vs/platform/agentHost/test/node/agentHostSavedChatContinuation.test.ts",
+      "src/vs/platform/agentHost/test/node/agentHostSavedChatService.test.ts",
+      "src/vs/platform/agentHost/test/node/providerIntegration/copilotAgentIntegrationTestHarness.ts",
+      "src/vs/platform/agentHost/test/node/providerIntegration/copilotByokSelectionIds.integrationTest.ts",
+      "src/vs/platform/agentHost/test/node/providerIntegration/copilotLocalModel.integrationTest.ts",
+      "src/vs/platform/agentHost/test/node/providerIntegration/copilotCredentialSponsorship.integrationTest.ts",
+      "copilot_shim",
+      "build/azure-pipelines/copilot-shim",
+      "build/codex",
+      "build/agent-sdk/agents/claude",
+      "build/agent-sdk/agents/codex",
+      "build/win32/copilot.iss"
     ]
   }
 ]
