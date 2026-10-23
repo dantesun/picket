@@ -5,8 +5,6 @@
 #
 # Status (2026-10-23, upstream tag 1.142.0):
 #   - 52-ext-copilot-remove-it.json : ENABLED (JSON actions, applied automatically)
-#   - 53-ext-copilot-remove-it.patch : NOT YET — stored, needs rebase to the pinned
-#     tag. Its base context (VSCodium master) does not match 1.142.0. See
-#     build/patches/README.md for the failing file list and rebase steps.
-#   Uncomment once rebased and verified:
-# 53-ext-copilot-remove-it.patch
+#   - 53-ext-copilot-remove-it.patch : ENABLED — rebase v2 against 1.142.0 + 52
+#     (28 modified + 2 deleted files), verified forward on a clean worktree.
+53-ext-copilot-remove-it.patch
