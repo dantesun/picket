@@ -121,11 +121,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: vscode-${{ matrix.platform }}
+          path: artifact
 
       - name: Move artifact to workspace root
         shell: bash
         run: |
-          mv "vscode-${{ matrix.platform }}/vscode.tar.gz" ./vscode.tar.gz
+          mv artifact/vscode.tar.gz ./vscode.tar.gz
 
       - name: Package
         shell: bash
