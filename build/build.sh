@@ -54,6 +54,7 @@ done < "$SCRIPT_DIR/extensions-remove.list"
 echo "Removed $REMOVE_COUNT built-in extension dirs (see build/extensions-remove.list)"
 
 echo "==> [picket] Applying Picket patches (product.json, Copilot, extension lists)"
+bash "$SCRIPT_DIR/apply-patches.sh" "$ROOT_DIR/vscode"
 PYTHON_BIN="$(command -v python3 || command -v python)"
 "$PYTHON_BIN" "$SCRIPT_DIR/patch-vscode.py"
 
